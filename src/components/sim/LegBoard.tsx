@@ -1,11 +1,11 @@
 import type { LegResult, SimulationResult } from '../../fare/engine'
-import { CARD_TYPES } from '../../fare/tariffs'
 import type { RouteInfo } from '../../transit/data'
 import { fmtMin, type Journey } from '../../sim/journey'
 import { legOps, legSummary } from '../../sim/legOps'
 import type { ResolvedLeg } from '../../sim/useSimulation'
 import { FareBadge, LegCard, tl } from './LegCard'
 import { LineBadge } from './LinePicker'
+import { CardTag } from './CardTag'
 
 type Props = {
   journey: Journey
@@ -77,12 +77,12 @@ export function LegBoard({ journey, onJourney, routes, resolved, detail, activeL
     .map((leg) => ({ leg, result: results.get(leg.draft.id) }))
     .filter((r): r is { leg: ResolvedLeg; result: LegResult } => r.leg.complete && !!r.result && r.result.status !== 'pending')
   const scale = showBars && timed.length > 0 ? makeScale(timed) : null
-  const cardLabel = CARD_TYPES.find((c) => c.type === journey.detailCard)!.label
 
   return (
     <section aria-label="Binişler" className="overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--surface)]">
       <header className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-[var(--line)] px-4 py-2.5">
-        <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">Binişler · {cardLabel} kart</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">Binişler</h2>
+      <CardTag card={journey.detailCard} suffix=" kart" className="text-xs" />
         <span className="text-xs font-semibold tabular-nums text-[var(--ink)]">{legSummary(journey, detail)}</span>
         {scale && (
           <span className="flex items-center gap-3 text-[11px] text-[var(--muted)]">

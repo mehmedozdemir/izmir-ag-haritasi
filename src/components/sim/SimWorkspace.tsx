@@ -35,6 +35,8 @@ type Props = {
   onActiveLeg: (id: string | null) => void
   /** Kart yerleşimi seçici; üst yerleşimlerde senaryo şeridinin sağ ucunda durur. */
   switcher?: React.ReactNode
+  /** Biniş kartı boyutu ölçeği (genişlik, yükseklik ve yazı birlikte; CSS zoom). */
+  cardScale?: number
   /** Harita kapalıyken: geniş ekranda biniş kartları soldan sağa, dar ekranda alt alta. */
   boardWide?: boolean
   boardView?: BoardView
@@ -46,6 +48,8 @@ type Props = {
 /** Senaryo şeridi + seçili senaryonun binişleri; yan panelde ya da harita üzerinde yüzen kartlar olarak. */
 export function SimWorkspace(p: Props) {
   const board = p.layout === 'board'
+  // zoom ile ölçeklenen alan; --card-zoom içerideki vh tabanlı yükseklik sınırlarını dengelemek için.
+  const zoomStyle = { zoom: p.cardScale ?? 1, '--card-zoom': p.cardScale ?? 1 } as React.CSSProperties
   const legLayout: LegLayout = p.layout === 'board' ? (p.boardWide ? 'bottom' : 'sidebar') : p.layout
   const floating = legLayout !== 'sidebar'
 
@@ -114,6 +118,7 @@ export function SimWorkspace(p: Props) {
                 <Compare scenarios={p.scenarios} activeId={p.active.id} onSelect={p.onSelect} routesById={p.routesById} />
               )}
               {/* Zaman çizelgesi sekmesinde liste zaman çubuklarıyla; karşılaştırmada kompakt liste olarak. */}
+              <div style={zoomStyle}>
               <LegBoard
                 journey={p.active}
                 onJourney={(j) => p.onUpdate({ ...p.active!, ...j })}
@@ -124,6 +129,7 @@ export function SimWorkspace(p: Props) {
                 onActive={p.onActiveLeg}
                 showBars={view === 'timeline'}
               />
+              </div>
             </>
           )}
         </div>
@@ -147,7 +153,11 @@ export function SimWorkspace(p: Props) {
     return (
       <section aria-label="Senaryo ve binişler" className="pointer-events-none absolute right-3 bottom-3 left-3 z-[600] flex max-h-[85%] flex-col gap-2">
         <div className="shrink-0">{bar}</div>
-        {legs}
+        {legs && (
+          <div className="flex min-h-0 flex-col gap-2" style={zoomStyle}>
+            {legs}
+          </div>
+        )}
       </section>
     )
   }
@@ -156,7 +166,9 @@ export function SimWorkspace(p: Props) {
     <section aria-label="Senaryo ve binişler" className="pointer-events-none absolute inset-3 z-[600] flex flex-col gap-2">
       <div className="shrink-0">{bar}</div>
       {legs && (
-        <div className={`flex min-h-0 w-[360px] flex-col gap-2 ${p.layout === 'top-right' ? 'self-end' : ''}`}>{legs}</div>
+        <div className={`flex min-h-0 w-[360px] flex-col gap-2 ${p.layout === 'top-right' ? 'self-end' : ''}`} style={zoomStyle}>
+          {legs}
+        </div>
       )}
     </section>
   )

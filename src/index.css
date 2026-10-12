@@ -53,6 +53,11 @@
 }
 
 :root {
+  /* Kart tipi renkleri (hat renkleriyle karışmayacak tonlar) */
+  --card-tam: #4f46e5;
+  --card-genc: #ea580c;
+  --card-ogretmen: #0e7490;
+  --card-yas60: #be185d;
   --good: #15803d;
   --good-soft: #dcfce7;
   --warn: #b45309;
@@ -62,6 +67,10 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
+    --card-tam: #818cf8;
+    --card-genc: #fb923c;
+    --card-ogretmen: #22d3ee;
+    --card-yas60: #f472b6;
     --good: #4ade80;
     --good-soft: #14321f;
     --warn: #fbbf24;
@@ -71,6 +80,10 @@
 }
 
 :root[data-theme='dark'] {
+  --card-tam: #818cf8;
+  --card-genc: #fb923c;
+  --card-ogretmen: #22d3ee;
+  --card-yas60: #f472b6;
   --good: #4ade80;
   --good-soft: #14321f;
   --warn: #fbbf24;

@@ -18,6 +18,8 @@ import {
 import { useSimulation } from './sim/useSimulation'
 import { useRouteIndex } from './transit/data'
 import { useMediaQuery } from './useMediaQuery'
+import { SettingsMenu } from './components/SettingsMenu'
+import { useCardScale } from './sim/cardScale'
 
 type Tab = 'sim' | 'izban'
 const TAB_KEY = 'izmir-ag.tab'
@@ -50,12 +52,19 @@ const MAP_LAYOUTS: { id: MapLayout; label: string; icon: string }[] = [
   { id: 'bottom', label: 'Alt', icon: '⬓' },
 ]
 
-// Kartların haritada kapladığı kenar; yakınlaştırmada bu alan boş bırakılır.
-const FIT_PADDING: Record<LegLayout, FitPadding> = {
-  sidebar: { topLeft: [50, 50], bottomRight: [50, 50] },
-  'top-left': { topLeft: [400, 110], bottomRight: [50, 50] },
-  'top-right': { topLeft: [50, 110], bottomRight: [400, 50] },
-  bottom: { topLeft: [50, 60], bottomRight: [50, 300] },
+// Kartların haritada kapladığı kenar (kart boyutu ölçeğine göre); yakınlaştırmada bu alan boş bırakılır.
+function fitPadding(layout: LegLayout, scale: number): FitPadding {
+  const column = Math.round(40 + 360 * scale)
+  switch (layout) {
+    case 'top-left':
+      return { topLeft: [column, 110], bottomRight: [50, 50] }
+    case 'top-right':
+      return { topLeft: [50, 110], bottomRight: [column, 50] }
+    case 'bottom':
+      return { topLeft: [50, 60], bottomRight: [50, Math.round(120 + 180 * scale)] }
+    default:
+      return { topLeft: [50, 50], bottomRight: [50, 50] }
+  }
 }
 
 function readLayout(): MapLayout {
@@ -131,7 +140,17 @@ export default function App() {
     setBoardView(v)
     writePref(BOARD_VIEW_KEY, v)
   }
-  const mapToggle = <MapToggle on={mapOn} onToggle={toggleMap} />
+  // Biniş kartı boyutu (⚙ ayarlarından); harita üzerindeki kartlara ve harita kapalı listeye uygulanır.
+  const cardScale = useCardScale()
+  const settings = (
+    <SettingsMenu scale={cardScale.scale} onIncrease={cardScale.increase} onDecrease={cardScale.decrease} onReset={cardScale.reset} />
+  )
+  const mapToggle = (
+    <div className="flex items-center gap-1.5">
+      {settings}
+      <MapToggle on={mapOn} onToggle={toggleMap} />
+    </div>
+  )
   const boardMode = tab === 'sim' && !mapOn
   const mapControls = (
     <div className="flex items-center gap-1.5">
@@ -143,6 +162,7 @@ export default function App() {
   const workspace = (layout: WorkspaceLayout) => (
     <SimWorkspace
       layout={layout}
+      cardScale={cardScale.scale}
       boardWide={wide}
       boardView={boardView}
       onBoardView={chooseBoardView}
@@ -212,7 +232,7 @@ export default function App() {
           workspace('board')
         ) : (
           <>
-            <SimMap legs={sim.resolved} activeId={activeLegId} onSelect={onActive} fitPadding={FIT_PADDING[legLayout]} />
+            <SimMap legs={sim.resolved} activeId={activeLegId} onSelect={onActive} fitPadding={fitPadding(legLayout, cardScale.scale)} />
             {legLayout === 'sidebar' ? (
               <div className="absolute top-3 right-3 z-[650]">{mapToggle}</div>
             ) : (

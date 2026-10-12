@@ -1,10 +1,10 @@
 import type { SimulationResult } from '../../fare/engine'
-import { CARD_TYPES } from '../../fare/tariffs'
 import type { RouteInfo } from '../../transit/data'
 import type { Journey } from '../../sim/journey'
 import { legOps, legSummary } from '../../sim/legOps'
 import type { ResolvedLeg } from '../../sim/useSimulation'
 import { LegCard } from './LegCard'
+import { CardTag } from './CardTag'
 
 /** Binişlerin nerede gösterileceği: yan panelde ya da harita üzerinde üç yerleşimden birinde. */
 export type LegLayout = 'sidebar' | 'top-left' | 'top-right' | 'bottom'
@@ -25,13 +25,13 @@ export function LegList({ layout, journey, onJourney, routes, routesError, resol
   const ops = legOps(journey, onJourney, onActive)
   const onMap = layout !== 'sidebar'
   const grid = layout === 'bottom'
-  const cardLabel = CARD_TYPES.find((c) => c.type === journey.detailCard)!.label
 
   const header = (
     <div
       className={`flex flex-wrap items-baseline gap-x-3 gap-y-0.5 ${onMap ? 'pointer-events-auto rounded-lg bg-[var(--bg)]/90 px-3 py-1.5 shadow-sm backdrop-blur' : 'mb-2'}`}
     >
-      <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">Binişler · {cardLabel} kart</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">Binişler</h2>
+      <CardTag card={journey.detailCard} suffix=" kart" className="text-xs" />
       <span className="text-xs tabular-nums text-[var(--muted)]">{legSummary(journey, detail)}</span>
       {journey.legs.length > 0 && (
         <button type="button" onClick={ops.clear} className="ml-auto text-xs font-semibold text-[var(--muted)] hover:text-[var(--warn)]">
@@ -107,7 +107,7 @@ export function LegList({ layout, journey, onJourney, routes, routesError, resol
       <div
         className={
           grid
-            ? 'thin-scroll grid max-h-[45vh] min-h-0 grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] content-start gap-1.5 overflow-y-auto pr-1'
+            ? 'thin-scroll grid max-h-[calc(45vh/var(--card-zoom,1))] min-h-0 grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] content-start gap-1.5 overflow-y-auto pr-1'
             : 'thin-scroll flex min-h-0 flex-col gap-1.5 overflow-y-auto pr-1'
         }
       >

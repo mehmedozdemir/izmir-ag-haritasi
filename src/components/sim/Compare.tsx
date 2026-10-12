@@ -6,6 +6,7 @@ import { scenarioName, type Scenario } from '../../sim/scenarios'
 import { useSimulation } from '../../sim/useSimulation'
 import { tl } from './LegCard'
 import { LineBadge } from './LinePicker'
+import { CardDot, CardTag } from './CardTag'
 
 type Props = {
   scenarios: Scenario[]
@@ -50,6 +51,7 @@ export function Compare({ scenarios, activeId, onSelect, routesById }: Props) {
           ))}
           {CARD_TYPES.map(({ type, label }, i) => (
             <div key={type} className={`flex ${TOTAL_ROW} items-center px-3 ${i === 0 ? 'border-t-2 border-[var(--ink)]/30' : 'border-t border-[var(--line)]'}`}>
+              <CardDot card={type} className="mr-1.5" />
               {label} toplam
             </div>
           ))}
@@ -97,7 +99,6 @@ function ScenarioColumn({
   const totalsKey = JSON.stringify(totals)
   useEffect(() => onTotals(scenario.id, JSON.parse(totalsKey) as Totals), [scenario.id, totalsKey, onTotals])
 
-  const cardLabel = CARD_TYPES.find((c) => c.type === scenario.detailCard)!.label
 
   return (
     <div className={`w-52 shrink-0 border-r border-[var(--line)] last:border-r-0 ${active ? 'bg-[var(--bg)]' : ''}`}>
@@ -109,7 +110,7 @@ function ScenarioColumn({
       >
         <span className="truncate text-sm font-bold text-[var(--ink)]">{scenarioName(scenario)}</span>
         <span className="truncate text-[11px] tabular-nums text-[var(--muted)]">
-          {scenario.date.split('-').reverse().slice(0, 2).join('.')} · {scenario.startTime} · {cardLabel}
+          {scenario.date.split('-').reverse().slice(0, 2).join('.')} · {scenario.startTime} <CardTag card={scenario.detailCard} />
           {!scenario.settings.izbanTransfer && ' · İZBAN aktarmasız'}
         </span>
       </button>

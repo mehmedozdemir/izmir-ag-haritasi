@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { CARD_TYPES } from '../../fare/tariffs'
+import { CARD_TYPES, cardMeta } from '../../fare/tariffs'
 import type { RouteInfo } from '../../transit/data'
 import { applyInput, scenarioName, scenarioToInput, type Scenario, type ScenarioInput } from '../../sim/scenarios'
 import { useSimulation } from '../../sim/useSimulation'
 import { tl } from './LegCard'
+import { CardDot, CardTag } from './CardTag'
 
 /** Düzenlenen senaryo: yeni oluşturma formu ya da mevcut senaryonun kimliği. */
 export type ScenarioEditing = 'new' | string | null
@@ -142,7 +143,6 @@ function ScenarioChip({
   const { results, resolved } = useSimulation(scenario, routesById)
   const r = results[scenario.detailCard]
   const hasLegs = resolved.some((l) => l.complete)
-  const card = CARD_TYPES.find((c) => c.type === scenario.detailCard)!.label
   const ref = useRef<HTMLButtonElement>(null)
   // Seçilen senaryo şeritte görünür alana kaysın.
   useEffect(() => {
@@ -157,6 +157,7 @@ function ScenarioChip({
       aria-selected={active}
       onClick={onClick}
       title={active ? 'Senaryo bilgilerini düzenle' : 'Senaryoyu seç'}
+      style={{ borderLeftColor: cardMeta(scenario.detailCard).color, borderLeftWidth: 4 }}
       className={`flex w-40 shrink-0 flex-col rounded-xl border px-3 py-1.5 text-left transition ${floating ? 'shadow-md' : ''} ${
         active
           ? 'border-[var(--ink)] bg-[var(--surface)]'
@@ -168,7 +169,7 @@ function ScenarioChip({
         {active && <span aria-hidden className="text-xs text-[var(--muted)]">✎</span>}
       </span>
       <span className="text-[11px] tabular-nums text-[var(--muted)]">
-        {shortDate(scenario.date)} · {scenario.startTime} · {card}
+        {shortDate(scenario.date)} · {scenario.startTime} <CardTag card={scenario.detailCard} className="ml-0.5" />
       </span>
       <span className="font-display text-base font-bold tabular-nums text-[var(--ink)]">
         {!hasLegs ? <span className="text-xs font-semibold text-[var(--muted)]">Biniş yok</span> : r.total === null ? '…' : tl(r.total)}
@@ -251,8 +252,8 @@ function ScenarioForm({ mode, initial, floating, className = '', legCount = 0, o
         <Field label="İlk biniş saati">
           <input type="time" required value={input.startTime} onChange={(e) => e.target.value && set({ startTime: e.target.value })} className="input" />
         </Field>
-        <Field label="Kart tipi">
-          <select value={input.card} onChange={(e) => set({ card: e.target.value as ScenarioInput['card'] })} className="input">
+        <Field label={<span className="flex items-center gap-1.5">Kart tipi <CardDot card={input.card} /></span>}>
+          <select style={{ borderColor: cardMeta(input.card).color }} value={input.card} onChange={(e) => set({ card: e.target.value as ScenarioInput['card'] })} className="input">
             {CARD_TYPES.map((c) => (
               <option key={c.type} value={c.type}>
                 {c.label}
@@ -327,7 +328,7 @@ function ScenarioForm({ mode, initial, floating, className = '', legCount = 0, o
   )
 }
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Field({ label, hint, children }: { label: React.ReactNode; hint?: string; children: React.ReactNode }) {
   return (
     <label className="flex min-w-0 flex-col gap-0.5" title={hint}>
       <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">{label}</span>

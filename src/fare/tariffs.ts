@@ -6,12 +6,15 @@ export const TARIFF_VALID_FROM = '2026-04-01'
 
 export type CardType = 'tam' | 'genc' | 'ogretmen' | 'yas60'
 
-export const CARD_TYPES: { type: CardType; label: string }[] = [
-  { type: 'tam', label: 'Tam' },
-  { type: 'genc', label: 'Genç' },
-  { type: 'ogretmen', label: 'Öğretmen' },
-  { type: 'yas60', label: '60 Yaş' },
+/** Kart tipleri; renkler index.css'teki --card-* değişkenlerinden (açık/koyu temaya göre). */
+export const CARD_TYPES: { type: CardType; label: string; color: string }[] = [
+  { type: 'tam', label: 'Tam', color: 'var(--card-tam)' },
+  { type: 'genc', label: 'Genç', color: 'var(--card-genc)' },
+  { type: 'ogretmen', label: 'Öğretmen', color: 'var(--card-ogretmen)' },
+  { type: 'yas60', label: '60 Yaş', color: 'var(--card-yas60)' },
 ]
+
+export const cardMeta = (type: CardType) => CARD_TYPES.find((c) => c.type === type)!
 
 /** Tarife kodları: tarife sayfasındaki (A)…(K) başlıkları. */
 export type TariffCode = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'I' | 'J' | 'K'

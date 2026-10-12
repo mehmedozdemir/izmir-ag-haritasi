@@ -38,7 +38,7 @@ export function SimPanel({ scenario, scenarioCount, onCardChange, onClearAll, re
             <>
               <h3 className="mt-3 mb-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">Kart tipine göre toplam</h3>
               <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-                {CARD_TYPES.map(({ type, label }) => {
+                {CARD_TYPES.map(({ type, label, color }) => {
                   const r = results[type]
                   const active = type === scenario.detailCard
                   return (
@@ -48,9 +48,12 @@ export function SimPanel({ scenario, scenarioCount, onCardChange, onClearAll, re
                       aria-pressed={active}
                       onClick={() => onCardChange(type)}
                       title={active ? 'Senaryonun kart tipi' : 'Senaryonun kart tipini bu yap'}
+                      style={{ borderTopColor: color, borderTopWidth: 3 }}
                       className={`rounded-lg border px-2 py-2 text-left transition ${active ? 'border-[var(--ink)] bg-[var(--bg)]' : 'border-[var(--line)] hover:border-[var(--muted)]'}`}
                     >
-                      <div className="text-[11px] font-semibold text-[var(--muted)]">{label}</div>
+                      <div className="text-[11px] font-semibold" style={{ color }}>
+                        {label}
+                      </div>
                       <div className="font-display text-lg font-bold leading-tight tabular-nums text-[var(--ink)]">
                         {r.total === null ? '…' : tl(r.total)}
                       </div>
