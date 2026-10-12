@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { CircleMarker, MapContainer, Pane, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import { latLngBounds } from 'leaflet'
 import { izbanSegment, lines, stationByTarifeId, stations, transferStations, type Station } from '../network'
+import { InvalidateOnResize } from './InvalidateOnResize'
 
 type Props = {
   fromId: number | null
@@ -27,6 +28,7 @@ export function NetworkMap({ fromId, toId, onStationClick }: Props) {
   return (
     <MapContainer bounds={IZMIR_BOUNDS} boundsOptions={{ padding: [24, 24] }} zoomControl={false} className="h-full w-full">
       <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} maxZoom={19} className="basemap" />
+      <InvalidateOnResize />
       <FitToRoute segment={segment} />
 
       <Pane name="lines" style={{ zIndex: 410 }}>

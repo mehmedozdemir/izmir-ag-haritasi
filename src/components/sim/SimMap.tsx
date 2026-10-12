@@ -5,6 +5,7 @@ import { lines, stations } from '../../network'
 import { shapeBetween } from '../../transit/data'
 import type { ResolvedLeg } from '../../sim/useSimulation'
 import { TILE_ATTRIBUTION, TILE_URL } from '../NetworkMap'
+import { InvalidateOnResize } from '../InvalidateOnResize'
 
 const IZMIR_BOUNDS = latLngBounds(stations.map((s) => [s.lat, s.lng]))
 
@@ -41,6 +42,7 @@ export function SimMap({ legs, activeId, onSelect, fitPadding }: Props) {
   return (
     <MapContainer bounds={IZMIR_BOUNDS} boundsOptions={{ padding: [24, 24] }} zoomControl={false} className="h-full w-full">
       <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} maxZoom={19} className="basemap" />
+      <InvalidateOnResize />
       <FitTo paths={focused ? [focused.path] : drawn.map((d) => d.path)} padding={fitPadding} />
 
       {/* Bağlam için raylı ağ soluk olarak */}

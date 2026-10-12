@@ -2,11 +2,19 @@ import type { SimulationResult } from '../../fare/engine'
 import type { RouteInfo } from '../../transit/data'
 import type { Scenario, ScenarioInput } from '../../sim/scenarios'
 import type { ResolvedLeg } from '../../sim/useSimulation'
+import { Compare } from './Compare'
 import { LegList, type LegLayout } from './LegList'
 import { ScenarioBar, type ScenarioEditing } from './ScenarioBar'
+import { Timeline } from './Timeline'
+
+/** Harita kapalıyken ana alandaki görünüm. */
+export type BoardView = 'timeline' | 'compare'
+
+/** Harita açıkken LegLayout; harita kapalıyken 'board' (ana alanı kaplayan çalışma alanı). */
+export type WorkspaceLayout = LegLayout | 'board'
 
 type Props = {
-  layout: LegLayout
+  layout: WorkspaceLayout
   scenarios: Scenario[]
   active: Scenario | undefined
   onSelect: (id: string) => void
@@ -27,11 +35,19 @@ type Props = {
   onActiveLeg: (id: string | null) => void
   /** Kart yerleşimi seçici; üst yerleşimlerde senaryo şeridinin sağ ucunda durur. */
   switcher?: React.ReactNode
+  /** Harita kapalıyken: geniş ekranda biniş kartları soldan sağa, dar ekranda alt alta. */
+  boardWide?: boolean
+  boardView?: BoardView
+  onBoardView?: (v: BoardView) => void
+  /** Harita aç/kapa düğmesi (harita kapalıyken şeridin sağ ucunda). */
+  mapToggle?: React.ReactNode
 }
 
 /** Senaryo şeridi + seçili senaryonun binişleri; yan panelde ya da harita üzerinde yüzen kartlar olarak. */
 export function SimWorkspace(p: Props) {
-  const floating = p.layout !== 'sidebar'
+  const board = p.layout === 'board'
+  const legLayout: LegLayout = p.layout === 'board' ? (p.boardWide ? 'bottom' : 'sidebar') : p.layout
+  const floating = legLayout !== 'sidebar'
 
   const bar = (
     <ScenarioBar
@@ -49,13 +65,13 @@ export function SimWorkspace(p: Props) {
       routesById={p.routesById}
       floating={floating}
       align={p.layout === 'top-right' ? 'end' : 'start'}
-      trailing={p.layout === 'top-left' || p.layout === 'top-right' ? p.switcher : undefined}
+      trailing={board ? p.mapToggle : p.layout === 'top-left' || p.layout === 'top-right' ? p.switcher : undefined}
     />
   )
 
   const legs = p.active && (
     <LegList
-      layout={p.layout}
+      layout={legLayout}
       journey={p.active}
       onJourney={(j) => p.onUpdate({ ...p.active!, ...j })}
       routes={p.routes}
@@ -66,6 +82,52 @@ export function SimWorkspace(p: Props) {
       onActive={p.onActiveLeg}
     />
   )
+
+  if (board) {
+    const view = p.boardView ?? 'timeline'
+    return (
+      <div className="md:h-full md:overflow-y-auto">
+        <div className="mx-auto flex max-w-[1600px] flex-col gap-4 p-4 md:p-6">
+          {bar}
+          {p.active && (
+            <>
+              <nav className="flex gap-4 border-b border-[var(--line)]" role="tablist" aria-label="Görünüm">
+                {(
+                  [
+                    ['timeline', 'Zaman çizelgesi'],
+                    ['compare', 'Karşılaştırma'],
+                  ] as const
+                ).map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    aria-selected={view === id}
+                    onClick={() => p.onBoardView?.(id)}
+                    className={`-mb-px border-b-2 pb-2 text-sm font-semibold transition ${view === id ? 'border-[var(--izban)] text-[var(--ink)]' : 'border-transparent text-[var(--muted)] hover:text-[var(--ink)]'}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </nav>
+              {view === 'timeline' ? (
+                <Timeline
+                  legs={p.resolved}
+                  detail={p.detail}
+                  startBalance={p.active.startBalance}
+                  activeLegId={p.activeLegId}
+                  onSelect={p.onActiveLeg}
+                />
+              ) : (
+                <Compare scenarios={p.scenarios} activeId={p.active.id} onSelect={p.onSelect} routesById={p.routesById} />
+              )}
+              <div className="flex min-w-0 flex-col gap-2">{legs}</div>
+            </>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   if (!floating) {
     return (

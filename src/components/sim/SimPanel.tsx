@@ -13,11 +13,13 @@ type Props = {
   results: Record<CardType, SimulationResult>
   /** Dar ekranda senaryo şeridi ve binişler panelde gösterilir; geniş ekranda harita üzerindedir. */
   workspace: React.ReactNode | null
+  /** Binişler panelde değilken gösterilecek açıklama (varsayılan: harita üzerinde). */
+  hint?: string
 }
 
 const trDate = (iso: string) => iso.split('-').reverse().join('.')
 
-export function SimPanel({ scenario, scenarioCount, onCardChange, onClearAll, resolved, results, workspace }: Props) {
+export function SimPanel({ scenario, scenarioCount, onCardChange, onClearAll, resolved, results, workspace, hint }: Props) {
   const completeCount = resolved.filter((l) => l.complete).length
   const detail = scenario ? results[scenario.detailCard] : undefined
 
@@ -69,7 +71,7 @@ export function SimPanel({ scenario, scenarioCount, onCardChange, onClearAll, re
       ) : (
         !workspace && (
           <p className="rounded-xl border border-dashed border-[var(--line)] p-3 text-sm leading-relaxed text-[var(--muted)]">
-            Haritanın üzerindeki <strong className="text-[var(--ink)]">＋ Yeni senaryo</strong> ile bir ücret senaryosu oluşturun, ardından binişleri sırayla
+            <strong className="text-[var(--ink)]">＋ Yeni senaryo</strong> ile bir ücret senaryosu oluşturun, ardından binişleri sırayla
             ekleyin.
           </p>
         )
@@ -77,8 +79,8 @@ export function SimPanel({ scenario, scenarioCount, onCardChange, onClearAll, re
 
       {workspace ?? (
         <p className="rounded-xl border border-dashed border-[var(--line)] p-3 text-xs leading-relaxed text-[var(--muted)]">
-          Senaryolar ve binişler harita üzerinde. Bir kartı düzenlemek için tıklayın; seçili senaryoya tekrar tıklayınca bilgileri açılır. Kartın dışına
-          tıklayınca ya da Esc ile kapanır. Kartların yerini haritanın üstündeki düğmelerle değiştirebilirsiniz.
+          {hint ?? <>Senaryolar ve binişler harita üzerinde. Bir kartı düzenlemek için tıklayın; seçili senaryoya tekrar tıklayınca bilgileri açılır. Kartın dışına
+          tıklayınca ya da Esc ile kapanır. Kartların yerini haritanın üstündeki düğmelerle değiştirebilirsiniz.</>}
         </p>
       )}
 

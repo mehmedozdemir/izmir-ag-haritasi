@@ -6,7 +6,7 @@ import type { LegLayout } from './components/sim/LegList'
 import type { ScenarioEditing } from './components/sim/ScenarioBar'
 import { SimMap, type FitPadding } from './components/sim/SimMap'
 import { SimPanel } from './components/sim/SimPanel'
-import { SimWorkspace } from './components/sim/SimWorkspace'
+import { SimWorkspace, type BoardView, type WorkspaceLayout } from './components/sim/SimWorkspace'
 import {
   createScenario,
   defaultScenarioInput,
@@ -22,6 +22,26 @@ import { useMediaQuery } from './useMediaQuery'
 type Tab = 'sim' | 'izban'
 const TAB_KEY = 'izmir-ag.tab'
 const LAYOUT_KEY = 'izmir-ag.legLayout'
+const MAP_KEY = 'izmir-ag.mapOn'
+const BOARD_VIEW_KEY = 'izmir-ag.boardView'
+const PANEL_KEY = 'izmir-ag.panelOpen'
+
+function readPref<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
+  try {
+    const v = localStorage.getItem(key)
+    return allowed.includes(v as T) ? (v as T) : fallback
+  } catch {
+    return fallback
+  }
+}
+
+function writePref(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value)
+  } catch {
+    /* depolama kapalıysa tercih yalnızca bu oturumda kalır */
+  }
+}
 
 type MapLayout = Exclude<LegLayout, 'sidebar'>
 const MAP_LAYOUTS: { id: MapLayout; label: string; icon: string }[] = [
@@ -75,8 +95,17 @@ export default function App() {
   const [editing, setEditing] = useState<ScenarioEditing>(null)
   const onEditing = useCallback((e: ScenarioEditing) => setEditing(e), [])
 
-  // Geniş masaüstünde binişler harita üzerinde yüzen kartlar olarak gösterilir.
-  const wide = useMediaQuery('(min-width: 1280px)')
+  // Sağ panel masaüstünde daraltılabilir (varsayılan kapalı); mobilde içerik alt alta aktığı için hep açık.
+  const desktop = useMediaQuery('(min-width: 768px)')
+  const [panelOpen, setPanelOpen] = useState(() => readPref(PANEL_KEY, ['1', '0'] as const, '0') === '1')
+  const setPanel = (open: boolean) => {
+    setPanelOpen(open)
+    writePref(PANEL_KEY, open ? '1' : '0')
+  }
+  const panelCollapsed = desktop && !panelOpen
+
+  // Geniş masaüstünde (ya da panel kapalıyken) binişler harita üzerinde yüzen kartlar olarak gösterilir.
+  const wide = useMediaQuery('(min-width: 1280px)') || panelCollapsed
   const [mapLayout, setMapLayout] = useState<MapLayout>(readLayout)
   const legLayout: LegLayout = wide ? mapLayout : 'sidebar'
   const chooseLayout = (l: MapLayout) => {
@@ -88,9 +117,36 @@ export default function App() {
     }
   }
 
-  const workspace = (layout: LegLayout) => (
+  // Harita aç/kapa (yalnızca Simülasyon sekmesi); kapalıyken ana alan zaman çizelgesi/karşılaştırma olur.
+  const [mapOn, setMapOn] = useState(() => readPref(MAP_KEY, ['1', '0'] as const, '1') === '1')
+  const toggleMap = () => {
+    setMapOn((on) => {
+      writePref(MAP_KEY, on ? '0' : '1')
+      return !on
+    })
+    setActiveLegId(null)
+  }
+  const [boardView, setBoardView] = useState<BoardView>(() => readPref(BOARD_VIEW_KEY, ['timeline', 'compare'] as const, 'timeline'))
+  const chooseBoardView = (v: BoardView) => {
+    setBoardView(v)
+    writePref(BOARD_VIEW_KEY, v)
+  }
+  const mapToggle = <MapToggle on={mapOn} onToggle={toggleMap} />
+  const boardMode = tab === 'sim' && !mapOn
+  const mapControls = (
+    <div className="flex items-center gap-1.5">
+      {mapToggle}
+      <LayoutSwitcher value={mapLayout} onChange={chooseLayout} />
+    </div>
+  )
+
+  const workspace = (layout: WorkspaceLayout) => (
     <SimWorkspace
       layout={layout}
+      boardWide={wide}
+      boardView={boardView}
+      onBoardView={chooseBoardView}
+      mapToggle={mapToggle}
       scenarios={scenarios.store.scenarios}
       active={active}
       onSelect={(id) => {
@@ -118,7 +174,7 @@ export default function App() {
       detail={sim.results[(active ?? placeholder).detailCard]}
       activeLegId={activeLegId}
       onActiveLeg={onActive}
-      switcher={<LayoutSwitcher value={mapLayout} onChange={chooseLayout} />}
+      switcher={mapControls}
     />
   )
 
@@ -144,31 +200,52 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-dvh flex-col md:flex-row">
-      <main className="relative min-h-0 flex-1">
+    // Harita kapalıyken mobilde sayfa doğal akışta kayar (ana alan + özet alt alta); masaüstünde yan yana.
+    <div className={`flex flex-col md:h-dvh md:flex-row ${boardMode ? 'min-h-dvh' : 'h-dvh'}`}>
+      <main className={`relative min-w-0 md:min-h-0 md:flex-1 ${boardMode ? '' : 'min-h-0 flex-1'}`}>
         {tab === 'izban' ? (
           <>
             <NetworkMap fromId={fromId} toId={toId} onStationClick={handleStationClick} />
             <Legend />
           </>
+        ) : !mapOn ? (
+          workspace('board')
         ) : (
           <>
             <SimMap legs={sim.resolved} activeId={activeLegId} onSelect={onActive} fitPadding={FIT_PADDING[legLayout]} />
-            {legLayout !== 'sidebar' && (
+            {legLayout === 'sidebar' ? (
+              <div className="absolute top-3 right-3 z-[650]">{mapToggle}</div>
+            ) : (
               <>
                 {workspace(legLayout)}
-                {legLayout === 'bottom' && (
-                  <div className="absolute top-3 left-1/2 z-[650] -translate-x-1/2">
-                    <LayoutSwitcher value={mapLayout} onChange={chooseLayout} />
-                  </div>
-                )}
+                {legLayout === 'bottom' && <div className="absolute top-3 left-1/2 z-[650] -translate-x-1/2">{mapControls}</div>}
               </>
             )}
           </>
         )}
       </main>
-      <aside className="max-h-[60dvh] shrink-0 overflow-y-auto border-t border-[var(--line)] bg-[var(--bg)] md:max-h-none md:w-[440px] md:border-t-0 md:border-l">
-        <header className="z-10 md:sticky md:top-0 border-b border-[var(--line)] bg-[var(--bg)]/95 px-4 pt-4 backdrop-blur md:px-6 md:pt-5">
+      {panelCollapsed ? (
+        <PanelRail
+          tab={tab}
+          onOpen={() => setPanel(true)}
+          onTab={(t) => {
+            chooseTab(t)
+            // İZBAN ücretinin sonucu panelde gösterildiği için bu sekmede paneli aç.
+            if (t === 'izban') setPanel(true)
+          }}
+        />
+      ) : (
+      <aside className={`shrink-0 overflow-y-auto ${boardMode ? '' : 'max-h-[60dvh]'} border-t border-[var(--line)] bg-[var(--bg)] md:max-h-none md:w-[440px] md:border-t-0 md:border-l`}>
+        <header className="relative z-10 md:sticky md:top-0 border-b border-[var(--line)] bg-[var(--bg)]/95 px-4 pt-4 backdrop-blur md:px-6 md:pt-5">
+          <button
+            type="button"
+            onClick={() => setPanel(false)}
+            aria-label="Paneli kapat"
+            title="Paneli kapat"
+            className="absolute top-3 right-3 hidden h-8 w-8 place-items-center rounded-full text-lg text-[var(--muted)] hover:bg-[var(--track)] hover:text-[var(--ink)] md:grid"
+          >
+            »
+          </button>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">İzmir Toplu Ulaşım</p>
           <h1 className="font-display text-3xl font-bold leading-none text-[var(--ink)]">Ücret Haritası</h1>
           <nav className="mt-3 flex gap-4" role="tablist" aria-label="Görünüm">
@@ -223,12 +300,58 @@ export default function App() {
               }}
               resolved={sim.resolved}
               results={sim.results}
-              workspace={legLayout === 'sidebar' ? workspace('sidebar') : null}
+              workspace={mapOn && legLayout === 'sidebar' ? workspace('sidebar') : null}
+              hint={
+                mapOn
+                  ? undefined
+                  : 'Harita kapalı: binişler zaman çizelgesinde. Bir çubuğa ya da karta tıklayarak düzenleyin; Karşılaştırma sekmesinde senaryoları yan yana görün.'
+              }
             />
           )}
         </div>
       </aside>
+      )}
     </div>
+  )
+}
+
+/** Panel kapalıyken sağda kalan ince şerit: paneli açma ve sekme geçişi. */
+function PanelRail({ tab, onOpen, onTab }: { tab: Tab; onOpen: () => void; onTab: (t: Tab) => void }) {
+  const item = (active: boolean) =>
+    `grid h-9 w-9 place-items-center rounded-lg text-sm font-bold transition ${active ? 'bg-[var(--ink)] text-[var(--bg)]' : 'text-[var(--ink)] hover:bg-[var(--track)]'}`
+  return (
+    <aside className="flex w-12 shrink-0 flex-col items-center gap-2 border-l border-[var(--line)] bg-[var(--bg)] py-3" aria-label="Kapalı panel">
+      <button type="button" onClick={onOpen} aria-label="Paneli aç" title="Paneli aç" className={`${item(false)} text-lg text-[var(--muted)]`}>
+        «
+      </button>
+      <div className="my-1 h-px w-6 bg-[var(--line)]" />
+      <div role="tablist" aria-label="Görünüm" aria-orientation="vertical" className="flex flex-col gap-2">
+        <button type="button" role="tab" aria-selected={tab === 'sim'} onClick={() => onTab('sim')} title="Yolculuk Simülasyonu" aria-label="Yolculuk Simülasyonu" className={item(tab === 'sim')}>
+          ₺
+        </button>
+        <button type="button" role="tab" aria-selected={tab === 'izban'} onClick={() => onTab('izban')} title="İZBAN Ücreti" aria-label="İZBAN Ücreti" className={item(tab === 'izban')}>
+          <span className="rounded bg-[var(--izban)] px-1 text-[10px] leading-4 text-white">İZ</span>
+        </button>
+      </div>
+    </aside>
+  )
+}
+
+function MapToggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={on}
+      aria-label={on ? 'Haritayı kapat' : 'Haritayı göster'}
+      title={on ? 'Haritayı kapat (zaman çizelgesi ve karşılaştırma)' : 'Haritayı göster'}
+      className={`flex h-9 items-center gap-1.5 rounded-full border text-xs ${on ? 'w-9 justify-center' : 'px-3'} font-semibold whitespace-nowrap shadow-sm backdrop-blur transition ${
+        on ? 'border-transparent bg-[var(--bg)]/90 text-[var(--ink)] hover:bg-[var(--surface)]' : 'border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] hover:border-[var(--ink)]'
+      }`}
+    >
+      <span aria-hidden className="text-sm leading-none">🗺</span>
+      {!on && 'Haritayı göster'}
+    </button>
   )
 }
 
