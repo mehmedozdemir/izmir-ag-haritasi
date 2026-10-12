@@ -1,9 +1,10 @@
 import type { SimulationResult } from '../../fare/engine'
 import { CARD_TYPES, TARIFF_VALID_FROM, type CardType } from '../../fare/tariffs'
 import type { RouteInfo } from '../../transit/data'
-import { exampleLegs, newLegId, type Journey, type LegDraft } from '../../sim/journey'
+import type { Journey } from '../../sim/journey'
 import type { ResolvedLeg } from '../../sim/useSimulation'
-import { LegCard, tl } from './LegCard'
+import { tl } from './LegCard'
+import { LegList } from './LegList'
 
 type Props = {
   journey: Journey
@@ -12,22 +13,17 @@ type Props = {
   routesError: Error | null
   resolved: ResolvedLeg[]
   results: Record<CardType, SimulationResult>
+  /** Geniş ekranda binişler harita üzerinde gösterilir; panelde yalnızca ayarlar ve özet kalır. */
+  legsOnMap: boolean
+  activeId: string | null
+  onActive: (id: string | null) => void
 }
 
-export function SimPanel({ journey, onJourney, routes, routesError, resolved, results }: Props) {
+export function SimPanel({ journey, onJourney, routes, routesError, resolved, results, legsOnMap, activeId, onActive }: Props) {
   const set = (patch: Partial<Journey>) => onJourney({ ...journey, ...patch })
-  const setLegs = (legs: LegDraft[]) => set({ legs })
-  const updateLeg = (id: string, patch: Partial<LegDraft>) =>
-    setLegs(journey.legs.map((l) => (l.id === id ? { ...l, ...patch } : l)))
-  const moveLeg = (i: number, delta: -1 | 1) => {
-    const legs = [...journey.legs]
-    ;[legs[i], legs[i + delta]] = [legs[i + delta], legs[i]]
-    setLegs(legs)
-  }
 
   const detail = results[journey.detailCard]
   const completeCount = resolved.filter((l) => l.complete).length
-  const isEmpty = journey.legs.every((l) => !l.routeId)
 
   return (
     <div className="flex flex-col gap-4">
@@ -108,46 +104,24 @@ export function SimPanel({ journey, onJourney, routes, routesError, resolved, re
         </section>
       )}
 
-      <section aria-label="Binişler">
-        <div className="mb-2 flex items-baseline justify-between">
-          <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-            Binişler · {CARD_TYPES.find((c) => c.type === journey.detailCard)!.label} kart
-          </h2>
-          {isEmpty && (
-            <button type="button" onClick={() => setLegs(exampleLegs())} className="text-xs font-semibold text-[var(--info)] hover:underline">
-              Örnek yolculuk yükle
-            </button>
-          )}
-        </div>
-        {routesError && <p className="text-sm text-[var(--warn)]">Hat verisi yüklenemedi: {routesError.message}</p>}
-        {!routes ? (
-          <div className="h-32 animate-pulse rounded-xl bg-[var(--track)]" />
-        ) : (
-          <ol className="flex flex-col gap-3">
-            {resolved.map((leg, i) => (
-              <LegCard
-                key={leg.draft.id}
-                index={i}
-                leg={leg}
-                result={detail.legs.find((r) => r.legId === leg.draft.id)}
-                routes={routes}
-                canMoveUp={i > 0}
-                canMoveDown={i < resolved.length - 1}
-                onChange={(patch) => updateLeg(leg.draft.id, patch)}
-                onRemove={() => setLegs(journey.legs.filter((l) => l.id !== leg.draft.id))}
-                onMove={(d) => moveLeg(i, d)}
-              />
-            ))}
-          </ol>
-        )}
-        <button
-          type="button"
-          onClick={() => setLegs([...journey.legs, { id: newLegId() }])}
-          className="mt-3 w-full rounded-xl border border-dashed border-[var(--line)] py-2.5 text-sm font-semibold text-[var(--muted)] hover:border-[var(--ink)] hover:text-[var(--ink)]"
-        >
-          + Biniş ekle
-        </button>
-      </section>
+      {legsOnMap ? (
+        <p className="rounded-xl border border-dashed border-[var(--line)] p-3 text-xs leading-relaxed text-[var(--muted)]">
+          Binişler harita üzerinde. Bir kartı düzenlemek için tıklayın; kartın dışına tıklayınca ya da Esc ile kapanır. Kartların yerini haritanın
+          üstündeki düğmelerle değiştirebilirsiniz.
+        </p>
+      ) : (
+        <LegList
+          layout="sidebar"
+          journey={journey}
+          onJourney={onJourney}
+          routes={routes}
+          routesError={routesError}
+          resolved={resolved}
+          detail={detail}
+          activeId={activeId}
+          onActive={onActive}
+        />
+      )}
 
       <footer className="space-y-1.5 text-xs leading-relaxed text-[var(--muted)]">
         <p>

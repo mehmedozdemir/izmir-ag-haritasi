@@ -6,6 +6,8 @@ type Props = {
   routes: RouteInfo[]
   value: RouteInfo | undefined
   onChange: (route: RouteInfo) => void
+  /** Liste açılır pencere yerine akış içinde açılır (kaydırılan kapsayıcılarda kırpılmaması için). */
+  inline?: boolean
 }
 
 const MODES: (Mode | 'all')[] = ['all', 'bus', 'metro', 'tram', 'izban', 'ferry']
@@ -24,7 +26,7 @@ export function LineBadge({ route, small }: { route: RouteInfo; small?: boolean 
   )
 }
 
-export function LinePicker({ routes, value, onChange }: Props) {
+export function LinePicker({ routes, value, onChange, inline }: Props) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [mode, setMode] = useState<Mode | 'all'>('all')
@@ -108,7 +110,9 @@ export function LinePicker({ routes, value, onChange }: Props) {
         className="w-full rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--ink)] outline-none focus:border-[var(--ink)]"
       />
       {open && (
-        <div className="absolute z-[1000] mt-1 w-full overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface)] shadow-lg">
+        <div
+          className={`mt-1 w-full overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface)] ${inline ? '' : 'absolute z-[1000] shadow-lg'}`}
+        >
           <div className="flex gap-1 overflow-x-auto border-b border-[var(--line)] p-1.5">
             {MODES.map((m) => (
               <button
@@ -125,7 +129,7 @@ export function LinePicker({ routes, value, onChange }: Props) {
               </button>
             ))}
           </div>
-          <ul id={listId} role="listbox" className="max-h-72 overflow-y-auto py-1">
+          <ul id={listId} role="listbox" className={`overflow-y-auto py-1 ${inline ? 'max-h-56' : 'max-h-72'}`}>
             {filtered.length === 0 && <li className="px-3 py-2 text-sm text-[var(--muted)]">Eşleşen hat yok</li>}
             {filtered.map((r, i) => (
               <li

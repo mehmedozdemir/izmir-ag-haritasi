@@ -1,17 +1,29 @@
+import { useEffect, useRef } from 'react'
 import type { LegResult } from '../../fare/engine'
 import { TARIFFS } from '../../fare/tariffs'
 import type { RouteInfo } from '../../transit/data'
 import { fmtMin, type LegDraft } from '../../sim/journey'
 import type { ResolvedLeg } from '../../sim/useSimulation'
-import { LinePicker } from './LinePicker'
+import { LineBadge, LinePicker } from './LinePicker'
 
 type Props = {
   index: number
   leg: ResolvedLeg
   result: LegResult | undefined
   routes: RouteInfo[]
+  /** Düzenleme modunda mı; değilse kompakt özet gösterilir. */
+  expanded: boolean
+  /** Harita üzerinde yüzen kart (gölge, yarı saydam kompakt hâl). */
+  floating?: boolean
+  inlinePicker?: boolean
+  /** Açıkken kartın kendi içinde kaydırılması (alt yerleşim). */
+  scrollable?: boolean
+  className?: string
+  onExpand: () => void
+  onCollapse: () => void
   canMoveUp: boolean
   canMoveDown: boolean
+  moveLabels?: [string, string]
   onChange: (patch: Partial<LegDraft>) => void
   onRemove: () => void
   onMove: (delta: -1 | 1) => void
@@ -20,15 +32,112 @@ type Props = {
 export const tl = (n: number) =>
   `${n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL`
 
-export function LegCard({ index, leg, result, routes, canMoveUp, canMoveDown, onChange, onRemove, onMove }: Props) {
+export function LegCard(props: Props) {
+  const { leg, expanded, floating, className = '', onCollapse } = props
+  const ref = useRef<HTMLLIElement>(null)
+
+  // Kartın dışına tıklanınca ya da Esc ile düzenleme modundan çık.
+  useEffect(() => {
+    if (!expanded) return
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onCollapse()
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !(e.target instanceof HTMLInputElement && e.target.role === 'combobox')) onCollapse()
+    }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [expanded, onCollapse])
+
+  // Açılan kartı görünür alana kaydır (uzun listede ya da yatay dizilimde).
+  useEffect(() => {
+    if (expanded) ref.current?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' })
+  }, [expanded])
+
+  const accent = leg.route?.color ?? 'var(--line)'
+  const surface = floating ? 'shadow-lg' : ''
+
+  return (
+    <li
+      ref={ref}
+      className={`pointer-events-auto relative rounded-xl border border-[var(--line)] bg-[var(--surface)] transition-opacity ${surface} ${className} ${
+        expanded ? (props.scrollable ? 'max-h-[calc(75vh-4rem)] overflow-y-auto' : '') : floating ? 'opacity-75 hover:opacity-100' : ''
+      }`}
+      style={{ borderLeft: `4px solid ${accent}` }}
+    >
+      {expanded ? <LegEditor {...props} /> : <LegSummary {...props} />}
+    </li>
+  )
+}
+
+/** Kompakt hâl: hat, duraklar, saat ve ücret. Tıklanınca düzenleme açılır. */
+function LegSummary({ index, leg, result, onExpand }: Props) {
+  const { route, from, to } = leg
+  const free = result?.status === 'transfer'
+  const pending = !result || result.status === 'pending'
+
+  return (
+    <button
+      type="button"
+      onClick={onExpand}
+      aria-label={`${index + 1}. binişi düzenle`}
+      className="flex w-full items-center gap-2.5 px-3 py-2 text-left"
+    >
+      <span
+        className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-bold text-white"
+        style={{ background: route?.color ?? 'var(--muted)' }}
+      >
+        {index + 1}
+      </span>
+      {route ? (
+        <>
+          <LineBadge route={route} small />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-semibold text-[var(--ink)]">
+              {from && to ? `${from.name} → ${to.name}` : route.name}
+            </span>
+            <span className="block text-xs tabular-nums text-[var(--muted)]">
+              {fmtMin(leg.boardMin)}
+              {leg.complete ? ` – ${fmtMin(leg.alightMin)}` : ' · durak seçilmedi'}
+            </span>
+          </span>
+          {leg.complete && (
+            <span className="shrink-0 text-right">
+              {leg.quoteState?.error ? (
+                <span className="text-xs font-semibold text-[var(--warn)]">Hata</span>
+              ) : pending ? (
+                <span className="text-xs text-[var(--muted)]">…</span>
+              ) : (
+                <>
+                  <span className={`block font-display text-lg font-bold leading-none tabular-nums ${free ? 'text-[var(--good)]' : 'text-[var(--ink)]'}`}>
+                    {free ? 'Ücretsiz' : tl(result.charged)}
+                  </span>
+                  {result.status !== 'paid' && <span className="text-[10px] font-semibold text-[var(--good)]">Aktarma</span>}
+                </>
+              )}
+            </span>
+          )}
+        </>
+      ) : (
+        <span className="flex-1 text-sm text-[var(--muted)]">Hat seçilmedi — düzenlemek için tıklayın</span>
+      )}
+    </button>
+  )
+}
+
+function LegEditor({ index, leg, result, routes, inlinePicker, canMoveUp, canMoveDown, moveLabels, onChange, onRemove, onMove, onCollapse }: Props) {
   const { route, dir, from, to } = leg
   const stops = dir?.stops ?? []
   const fromIdx = stops.findIndex((s) => s.id === from?.id)
   const toOptions = route?.anyOrder ? stops.filter((s) => s.id !== from?.id) : fromIdx >= 0 ? stops.slice(fromIdx + 1) : []
-  const accent = route?.color ?? 'var(--line)'
+  const [upLabel, downLabel] = moveLabels ?? ['Yukarı taşı', 'Aşağı taşı']
 
   return (
-    <li className="relative rounded-xl border border-[var(--line)] bg-[var(--surface)]" style={{ borderLeft: `4px solid ${accent}` }}>
+    <>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-[var(--line)] px-3 py-2">
         <span
           className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-bold text-white"
@@ -53,9 +162,10 @@ export function LegCard({ index, leg, result, routes, canMoveUp, canMoveDown, on
         )}
         {leg.complete && <span className="text-xs text-[var(--muted)] tabular-nums">→ iniş ~{fmtMin(leg.alightMin)}</span>}
         <div className="ml-auto flex items-center gap-0.5">
-          <IconButton label="Yukarı taşı" disabled={!canMoveUp} onClick={() => onMove(-1)}>↑</IconButton>
-          <IconButton label="Aşağı taşı" disabled={!canMoveDown} onClick={() => onMove(1)}>↓</IconButton>
+          <IconButton label={upLabel} disabled={!canMoveUp} onClick={() => onMove(-1)}>{moveLabels ? '←' : '↑'}</IconButton>
+          <IconButton label={downLabel} disabled={!canMoveDown} onClick={() => onMove(1)}>{moveLabels ? '→' : '↓'}</IconButton>
           <IconButton label="Binişi sil" onClick={onRemove}>✕</IconButton>
+          <IconButton label="Kapat" onClick={onCollapse}>✓</IconButton>
         </div>
       </div>
 
@@ -63,6 +173,7 @@ export function LegCard({ index, leg, result, routes, canMoveUp, canMoveDown, on
         <LinePicker
           routes={routes}
           value={route}
+          inline={inlinePicker}
           onChange={(r) => onChange({ routeId: r.id, dirId: r.dirs[0]?.id, fromStopId: undefined, toStopId: undefined })}
         />
 
@@ -103,7 +214,7 @@ export function LegCard({ index, leg, result, routes, canMoveUp, canMoveDown, on
 
         {leg.complete && <LegOutcome leg={leg} result={result} />}
       </div>
-    </li>
+    </>
   )
 }
 
