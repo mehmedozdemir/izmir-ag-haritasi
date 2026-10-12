@@ -5,7 +5,7 @@ import type { ResolvedLeg } from '../../sim/useSimulation'
 import { Compare } from './Compare'
 import { LegList, type LegLayout } from './LegList'
 import { ScenarioBar, type ScenarioEditing } from './ScenarioBar'
-import { Timeline } from './Timeline'
+import { LegBoard } from './LegBoard'
 
 /** Harita kapalıyken ana alandaki görünüm. */
 export type BoardView = 'timeline' | 'compare'
@@ -110,18 +110,20 @@ export function SimWorkspace(p: Props) {
                   </button>
                 ))}
               </nav>
-              {view === 'timeline' ? (
-                <Timeline
-                  legs={p.resolved}
-                  detail={p.detail}
-                  startBalance={p.active.startBalance}
-                  activeLegId={p.activeLegId}
-                  onSelect={p.onActiveLeg}
-                />
-              ) : (
+              {view === 'compare' && (
                 <Compare scenarios={p.scenarios} activeId={p.active.id} onSelect={p.onSelect} routesById={p.routesById} />
               )}
-              <div className="flex min-w-0 flex-col gap-2">{legs}</div>
+              {/* Zaman çizelgesi sekmesinde liste zaman çubuklarıyla; karşılaştırmada kompakt liste olarak. */}
+              <LegBoard
+                journey={p.active}
+                onJourney={(j) => p.onUpdate({ ...p.active!, ...j })}
+                routes={p.routes}
+                resolved={p.resolved}
+                detail={p.detail}
+                activeLegId={p.activeLegId}
+                onActive={p.onActiveLeg}
+                showBars={view === 'timeline'}
+              />
             </>
           )}
         </div>

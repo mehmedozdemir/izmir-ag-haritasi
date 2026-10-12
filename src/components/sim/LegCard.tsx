@@ -74,21 +74,21 @@ export function LegCard(props: Props) {
   )
 }
 
-/** Kompakt hâl: hat, duraklar, saat ve ücret. Tıklanınca düzenleme açılır. */
+/** Kompakt hâl (tek satır): numara, hat, duraklar ve ücret; saatler ipucunda. Tıklanınca düzenleme açılır. */
 function LegSummary({ index, leg, result, onExpand }: Props) {
   const { route, from, to } = leg
-  const free = result?.status === 'transfer'
-  const pending = !result || result.status === 'pending'
+  const times = leg.complete ? `${fmtMin(leg.boardMin)} – ${fmtMin(leg.alightMin)}` : fmtMin(leg.boardMin)
 
   return (
     <button
       type="button"
       onClick={onExpand}
       aria-label={`${index + 1}. binişi düzenle`}
-      className="flex w-full items-center gap-2.5 px-3 py-2 text-left"
+      title={route ? `${times} · düzenlemek için tıklayın` : 'Düzenlemek için tıklayın'}
+      className="flex h-9 w-full items-center gap-2 px-2.5 text-left"
     >
       <span
-        className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-bold text-white"
+        className="grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10px] font-bold text-white"
         style={{ background: route?.color ?? 'var(--muted)' }}
       >
         {index + 1}
@@ -96,36 +96,30 @@ function LegSummary({ index, leg, result, onExpand }: Props) {
       {route ? (
         <>
           <LineBadge route={route} small />
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-semibold text-[var(--ink)]">
-              {from && to ? `${from.name} → ${to.name}` : route.name}
-            </span>
-            <span className="block text-xs tabular-nums text-[var(--muted)]">
-              {fmtMin(leg.boardMin)}
-              {leg.complete ? ` – ${fmtMin(leg.alightMin)}` : ' · durak seçilmedi'}
-            </span>
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-[var(--ink)]">
+            {from && to ? `${from.name} → ${to.name}` : <span className="font-normal text-[var(--muted)]">{route.name} · durak seçilmedi</span>}
           </span>
-          {leg.complete && (
-            <span className="shrink-0 text-right">
-              {leg.quoteState?.error ? (
-                <span className="text-xs font-semibold text-[var(--warn)]">Hata</span>
-              ) : pending ? (
-                <span className="text-xs text-[var(--muted)]">…</span>
-              ) : (
-                <>
-                  <span className={`block font-display text-lg font-bold leading-none tabular-nums ${free ? 'text-[var(--good)]' : 'text-[var(--ink)]'}`}>
-                    {free ? 'Ücretsiz' : tl(result.charged)}
-                  </span>
-                  {result.status !== 'paid' && <span className="text-[10px] font-semibold text-[var(--good)]">Aktarma</span>}
-                </>
-              )}
-            </span>
-          )}
+          {leg.complete && <FareBadge leg={leg} result={result} />}
         </>
       ) : (
-        <span className="flex-1 text-sm text-[var(--muted)]">Hat seçilmedi — düzenlemek için tıklayın</span>
+        <span className="flex-1 truncate text-sm text-[var(--muted)]">Hat seçilmedi — düzenlemek için tıklayın</span>
       )}
     </button>
+  )
+}
+
+/** Kısa ücret etiketi: "16,50 TL", "Aktarma", "Aktarma · 0,60 TL", bekliyor ya da hata. */
+export function FareBadge({ leg, result }: { leg: ResolvedLeg; result: LegResult | undefined }) {
+  if (leg.quoteState?.error) return <span className="shrink-0 text-xs font-semibold text-[var(--warn)]">Hata</span>
+  if (!result || result.status === 'pending') return <span className="shrink-0 text-xs text-[var(--muted)]">…</span>
+  if (result.status === 'transfer') {
+    return <span className="shrink-0 rounded-full bg-[var(--good-soft)] px-2 py-0.5 text-xs font-semibold text-[var(--good)]">Aktarma</span>
+  }
+  return (
+    <span className="shrink-0 text-right font-display text-base font-bold leading-none tabular-nums text-[var(--ink)]">
+      {result.status === 'transfer-partial' && <span className="mr-1 font-sans text-[10px] font-semibold text-[var(--good)]">aktarma</span>}
+      {tl(result.charged)}
+    </span>
   )
 }
 

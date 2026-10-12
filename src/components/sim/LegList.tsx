@@ -1,7 +1,8 @@
 import type { SimulationResult } from '../../fare/engine'
 import { CARD_TYPES } from '../../fare/tariffs'
 import type { RouteInfo } from '../../transit/data'
-import { newLegId, type Journey, type LegDraft } from '../../sim/journey'
+import type { Journey } from '../../sim/journey'
+import { legOps, legSummary } from '../../sim/legOps'
 import type { ResolvedLeg } from '../../sim/useSimulation'
 import { LegCard } from './LegCard'
 
@@ -21,38 +22,20 @@ type Props = {
 }
 
 export function LegList({ layout, journey, onJourney, routes, routesError, resolved, detail, activeId, onActive }: Props) {
-  const setLegs = (legs: LegDraft[]) => onJourney({ ...journey, legs })
-  const updateLeg = (id: string, patch: Partial<LegDraft>) =>
-    setLegs(journey.legs.map((l) => (l.id === id ? { ...l, ...patch } : l)))
-  const moveLeg = (i: number, delta: -1 | 1) => {
-    const legs = [...journey.legs]
-    ;[legs[i], legs[i + delta]] = [legs[i + delta], legs[i]]
-    setLegs(legs)
-  }
-  const addLeg = () => {
-    const id = newLegId()
-    setLegs([...journey.legs, { id }])
-    onActive(id)
-  }
-
+  const ops = legOps(journey, onJourney, onActive)
   const onMap = layout !== 'sidebar'
-  const horizontal = layout === 'bottom'
+  const grid = layout === 'bottom'
   const cardLabel = CARD_TYPES.find((c) => c.type === journey.detailCard)!.label
 
   const header = (
-    <div className={`flex items-baseline justify-between gap-3 ${onMap ? 'pointer-events-auto rounded-lg bg-[var(--bg)]/90 px-3 py-1.5 shadow-sm backdrop-blur' : 'mb-2'}`}>
+    <div
+      className={`flex flex-wrap items-baseline gap-x-3 gap-y-0.5 ${onMap ? 'pointer-events-auto rounded-lg bg-[var(--bg)]/90 px-3 py-1.5 shadow-sm backdrop-blur' : 'mb-2'}`}
+    >
       <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">Binişler · {cardLabel} kart</h2>
+      <span className="text-xs tabular-nums text-[var(--muted)]">{legSummary(journey, detail)}</span>
       {journey.legs.length > 0 && (
-        <button
-          type="button"
-          onClick={() => {
-            if (!window.confirm(`Bu senaryodaki ${journey.legs.length} biniş silinsin mi?`)) return
-            setLegs([])
-            onActive(null)
-          }}
-          className="text-xs font-semibold text-[var(--muted)] hover:text-[var(--warn)]"
-        >
-          Binişleri temizle
+        <button type="button" onClick={ops.clear} className="ml-auto text-xs font-semibold text-[var(--muted)] hover:text-[var(--warn)]">
+          Temizle
         </button>
       )}
     </div>
@@ -61,12 +44,12 @@ export function LegList({ layout, journey, onJourney, routes, routesError, resol
   const addButton = (
     <button
       type="button"
-      onClick={addLeg}
-      className={`pointer-events-auto shrink-0 rounded-xl border border-dashed text-sm font-semibold transition ${
+      onClick={ops.add}
+      className={`pointer-events-auto w-full shrink-0 rounded-xl border border-dashed py-2 text-sm font-semibold transition ${
         onMap
           ? 'border-[var(--muted)] bg-[var(--bg)]/85 text-[var(--ink)] shadow-sm backdrop-blur hover:bg-[var(--bg)]'
           : 'border-[var(--line)] text-[var(--muted)] hover:border-[var(--ink)] hover:text-[var(--ink)]'
-      } ${horizontal ? 'w-36 self-end py-6' : 'w-full py-2.5'}`}
+      }`}
     >
       + Biniş ekle
     </button>
@@ -77,32 +60,32 @@ export function LegList({ layout, journey, onJourney, routes, routesError, resol
   const list = !routes ? (
     <div className="pointer-events-auto h-32 w-full animate-pulse rounded-xl bg-[var(--track)]" />
   ) : (
-    <ol className={horizontal ? 'contents' : 'flex flex-col gap-2'}>
-      {resolved.map((leg, i) => (
-        <LegCard
-          key={leg.draft.id}
-          index={i}
-          leg={leg}
-          result={detail.legs.find((r) => r.legId === leg.draft.id)}
-          routes={routes}
-          expanded={leg.draft.id === activeId}
-          floating={onMap}
-          inlinePicker={onMap}
-          className={horizontal ? 'w-80 shrink-0' : undefined}
-          scrollable={horizontal}
-          onExpand={() => onActive(leg.draft.id)}
-          onCollapse={() => onActive(null)}
-          canMoveUp={i > 0}
-          canMoveDown={i < resolved.length - 1}
-          moveLabels={horizontal ? ['Sola taşı', 'Sağa taşı'] : undefined}
-          onChange={(patch) => updateLeg(leg.draft.id, patch)}
-          onRemove={() => {
-            setLegs(journey.legs.filter((l) => l.id !== leg.draft.id))
-            if (activeId === leg.draft.id) onActive(null)
-          }}
-          onMove={(d) => moveLeg(i, d)}
-        />
-      ))}
+    <ol className={grid ? 'contents' : 'flex flex-col gap-1.5'}>
+      {resolved.map((leg, i) => {
+        const expanded = leg.draft.id === activeId
+        return (
+          <LegCard
+            key={leg.draft.id}
+            index={i}
+            leg={leg}
+            result={detail.legs.find((r) => r.legId === leg.draft.id)}
+            routes={routes}
+            expanded={expanded}
+            floating={onMap}
+            inlinePicker={onMap}
+            // Alt yerleşimde ızgara: açık kart tüm satırı kaplar.
+            className={grid && expanded ? 'col-span-full' : undefined}
+            onExpand={() => onActive(leg.draft.id)}
+            onCollapse={() => onActive(null)}
+            canMoveUp={i > 0}
+            canMoveDown={i < resolved.length - 1}
+            moveLabels={grid ? ['Öne al', 'Sona al'] : undefined}
+            onChange={(patch) => ops.update(leg.draft.id, patch)}
+            onRemove={() => ops.remove(leg.draft.id, activeId)}
+            onMove={(d) => ops.move(i, d)}
+          />
+        )
+      })}
     </ol>
   )
 
@@ -116,15 +99,16 @@ export function LegList({ layout, journey, onJourney, routes, routesError, resol
     )
   }
 
-  // Harita üzerinde: konumlandırmayı SimWorkspace yapar; burada başlık ve kaydırılabilir kart dizisi döner.
+  // Harita üzerinde: konumlandırmayı SimWorkspace yapar; burada başlık ve kaydırılabilir kart listesi döner.
+  // Alt yerleşimde kartlar yatay taşmak yerine çok sütunlu ızgarada akar ve liste haritanın yarısını geçmez.
   return (
     <>
-      <div className={horizontal ? 'self-start' : ''}>{header}</div>
+      <div className={grid ? 'self-start' : ''}>{header}</div>
       <div
         className={
-          horizontal
-            ? 'flex min-h-0 items-end gap-2 overflow-x-auto overflow-y-hidden pb-1'
-            : 'flex min-h-0 flex-col gap-2 overflow-y-auto pr-1'
+          grid
+            ? 'thin-scroll grid max-h-[45vh] min-h-0 grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] content-start gap-1.5 overflow-y-auto pr-1'
+            : 'thin-scroll flex min-h-0 flex-col gap-1.5 overflow-y-auto pr-1'
         }
       >
         {list}
