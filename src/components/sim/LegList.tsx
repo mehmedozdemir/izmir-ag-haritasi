@@ -1,7 +1,7 @@
 import type { SimulationResult } from '../../fare/engine'
 import { CARD_TYPES } from '../../fare/tariffs'
 import type { RouteInfo } from '../../transit/data'
-import { exampleLegs, newLegId, type Journey, type LegDraft } from '../../sim/journey'
+import { newLegId, type Journey, type LegDraft } from '../../sim/journey'
 import type { ResolvedLeg } from '../../sim/useSimulation'
 import { LegCard } from './LegCard'
 
@@ -37,22 +37,22 @@ export function LegList({ layout, journey, onJourney, routes, routesError, resol
 
   const onMap = layout !== 'sidebar'
   const horizontal = layout === 'bottom'
-  const isEmpty = journey.legs.every((l) => !l.routeId)
   const cardLabel = CARD_TYPES.find((c) => c.type === journey.detailCard)!.label
 
   const header = (
     <div className={`flex items-baseline justify-between gap-3 ${onMap ? 'pointer-events-auto rounded-lg bg-[var(--bg)]/90 px-3 py-1.5 shadow-sm backdrop-blur' : 'mb-2'}`}>
       <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">Binişler · {cardLabel} kart</h2>
-      {isEmpty && (
+      {journey.legs.length > 0 && (
         <button
           type="button"
           onClick={() => {
-            setLegs(exampleLegs())
+            if (!window.confirm(`Bu senaryodaki ${journey.legs.length} biniş silinsin mi?`)) return
+            setLegs([])
             onActive(null)
           }}
-          className="text-xs font-semibold text-[var(--info)] hover:underline"
+          className="text-xs font-semibold text-[var(--muted)] hover:text-[var(--warn)]"
         >
-          Örnek yolculuk yükle
+          Binişleri temizle
         </button>
       )}
     </div>
@@ -116,16 +116,9 @@ export function LegList({ layout, journey, onJourney, routes, routesError, resol
     )
   }
 
-  // Harita üzerinde: kapsayıcı tıklamaları haritaya geçirir, yalnızca kartlar etkileşimlidir.
-  const position =
-    layout === 'top-left'
-      ? 'top-3 bottom-3 left-3 w-[360px] flex-col'
-      : layout === 'top-right'
-        ? 'top-3 bottom-3 right-3 w-[360px] flex-col'
-        : 'bottom-3 left-3 right-3 max-h-[75%] flex-col'
-
+  // Harita üzerinde: konumlandırmayı SimWorkspace yapar; burada başlık ve kaydırılabilir kart dizisi döner.
   return (
-    <section aria-label="Binişler" className={`pointer-events-none absolute z-[600] flex gap-2 ${position}`}>
+    <>
       <div className={horizontal ? 'self-start' : ''}>{header}</div>
       <div
         className={
@@ -137,6 +130,6 @@ export function LegList({ layout, journey, onJourney, routes, routesError, resol
         {list}
         {addButton}
       </div>
-    </section>
+    </>
   )
 }

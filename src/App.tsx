@@ -1,11 +1,20 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { todayInIstanbul, useFare } from './api'
 import { FarePanel } from './components/FarePanel'
 import { NetworkMap } from './components/NetworkMap'
-import { LegList, type LegLayout } from './components/sim/LegList'
+import type { LegLayout } from './components/sim/LegList'
+import type { ScenarioEditing } from './components/sim/ScenarioBar'
 import { SimMap, type FitPadding } from './components/sim/SimMap'
 import { SimPanel } from './components/sim/SimPanel'
-import { loadJourney, saveJourney, type Journey } from './sim/journey'
+import { SimWorkspace } from './components/sim/SimWorkspace'
+import {
+  createScenario,
+  defaultScenarioInput,
+  duplicateScenario,
+  emptyJourney,
+  exampleScenario,
+  useScenarioStore,
+} from './sim/scenarios'
 import { useSimulation } from './sim/useSimulation'
 import { useRouteIndex } from './transit/data'
 import { useMediaQuery } from './useMediaQuery'
@@ -55,13 +64,16 @@ export default function App() {
   const [date, setDate] = useState(todayInIstanbul)
   const fare = useFare(fromId, toId, date)
 
-  // Yolculuk simülasyonu sekmesi
-  const [journey, setJourney] = useState<Journey>(() => loadJourney(todayInIstanbul()))
-  useEffect(() => saveJourney(journey), [journey])
+  // Yolculuk simülasyonu sekmesi: senaryolar ve seçili senaryonun binişleri
+  const scenarios = useScenarioStore()
+  const active = scenarios.active
+  const placeholder = useMemo(() => emptyJourney(todayInIstanbul()), [])
   const index = useRouteIndex()
-  const sim = useSimulation(journey, index.data?.byId)
+  const sim = useSimulation(active ?? placeholder, index.data?.byId)
   const [activeLegId, setActiveLegId] = useState<string | null>(null)
   const onActive = useCallback((id: string | null) => setActiveLegId(id), [])
+  const [editing, setEditing] = useState<ScenarioEditing>(null)
+  const onEditing = useCallback((e: ScenarioEditing) => setEditing(e), [])
 
   // Geniş masaüstünde binişler harita üzerinde yüzen kartlar olarak gösterilir.
   const wide = useMediaQuery('(min-width: 1280px)')
@@ -75,6 +87,39 @@ export default function App() {
       /* yok say */
     }
   }
+
+  const workspace = (layout: LegLayout) => (
+    <SimWorkspace
+      layout={layout}
+      scenarios={scenarios.store.scenarios}
+      active={active}
+      onSelect={(id) => {
+        scenarios.select(id)
+        setActiveLegId(null)
+      }}
+      onUpdate={scenarios.update}
+      onCreate={(input) => {
+        scenarios.add(createScenario(input))
+        setActiveLegId(null)
+      }}
+      onDuplicate={(s) => scenarios.add(duplicateScenario(s))}
+      onDelete={(s) => {
+        scenarios.remove(s.id)
+        setActiveLegId(null)
+      }}
+      onLoadExample={() => scenarios.add(exampleScenario(todayInIstanbul()))}
+      newInput={() => defaultScenarioInput(todayInIstanbul(), scenarios.store.scenarios.length + 1)}
+      editing={editing}
+      onEditing={onEditing}
+      routes={index.data?.routes}
+      routesById={index.data?.byId}
+      routesError={index.error}
+      resolved={sim.resolved}
+      detail={sim.results[(active ?? placeholder).detailCard]}
+      activeLegId={activeLegId}
+      onActiveLeg={onActive}
+    />
+  )
 
   const chooseTab = (t: Tab) => {
     setTab(t)
@@ -110,17 +155,7 @@ export default function App() {
             <SimMap legs={sim.resolved} activeId={activeLegId} onSelect={onActive} fitPadding={FIT_PADDING[legLayout]} />
             {legLayout !== 'sidebar' && (
               <>
-                <LegList
-                  layout={legLayout}
-                  journey={journey}
-                  onJourney={setJourney}
-                  routes={index.data?.routes}
-                  routesError={index.error}
-                  resolved={sim.resolved}
-                  detail={sim.results[journey.detailCard]}
-                  activeId={activeLegId}
-                  onActive={onActive}
-                />
+                {workspace(legLayout)}
                 <LayoutSwitcher value={mapLayout} onChange={chooseLayout} />
               </>
             )}
@@ -128,7 +163,7 @@ export default function App() {
         )}
       </main>
       <aside className="max-h-[60dvh] shrink-0 overflow-y-auto border-t border-[var(--line)] bg-[var(--bg)] md:max-h-none md:w-[440px] md:border-t-0 md:border-l">
-        <header className="z-10 md:sticky md:top-0border-b border-[var(--line)] bg-[var(--bg)]/95 px-4 pt-4 backdrop-blur md:px-6 md:pt-5">
+        <header className="z-10 md:sticky md:top-0 border-b border-[var(--line)] bg-[var(--bg)]/95 px-4 pt-4 backdrop-blur md:px-6 md:pt-5">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">İzmir Toplu Ulaşım</p>
           <h1 className="font-display text-3xl font-bold leading-none text-[var(--ink)]">Ücret Haritası</h1>
           <nav className="mt-3 flex gap-4" role="tablist" aria-label="Görünüm">
@@ -173,15 +208,17 @@ export default function App() {
             />
           ) : (
             <SimPanel
-              journey={journey}
-              onJourney={setJourney}
-              routes={index.data?.routes}
-              routesError={index.error}
+              scenario={active}
+              scenarioCount={scenarios.store.scenarios.length}
+              onCardChange={(card) => active && scenarios.update({ ...active, detailCard: card })}
+              onClearAll={() => {
+                scenarios.clearAll()
+                setActiveLegId(null)
+                setEditing(null)
+              }}
               resolved={sim.resolved}
               results={sim.results}
-              legsOnMap={legLayout !== 'sidebar'}
-              activeId={activeLegId}
-              onActive={onActive}
+              workspace={legLayout === 'sidebar' ? workspace('sidebar') : null}
             />
           )}
         </div>

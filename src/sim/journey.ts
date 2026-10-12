@@ -1,5 +1,5 @@
 // Yolculuk taslağı: kullanıcının sırayla eklediği binişler ve genel ayarlar.
-import { DEFAULT_SETTINGS, type FareSettings } from '../fare/engine'
+import type { FareSettings } from '../fare/engine'
 import type { CardType } from '../fare/tariffs'
 
 export type LegDraft = {
@@ -39,18 +39,6 @@ export const fmtMin = (min: number) => {
   return `${String(h).padStart(2, '0')}:${String(mm).padStart(2, '0')}${day > 0 ? ` (+${day} gün)` : ''}`
 }
 
-export function defaultJourney(today: string): Journey {
-  return {
-    date: today,
-    startTime: '08:30',
-    transferBufferMin: 5,
-    startBalance: null,
-    settings: DEFAULT_SETTINGS,
-    detailCard: 'tam',
-    legs: [{ id: newLegId() }],
-  }
-}
-
 /** Karşıyaka'dan İZBAN → Halkapınar'dan Metro → Konak'tan vapurla Karşıyaka'ya dönüş. */
 export function exampleLegs(): LegDraft[] {
   return [
@@ -58,28 +46,4 @@ export function exampleLegs(): LegDraft[] {
     { id: newLegId(), routeId: 'metro-m1', dirId: '0', fromStopId: 'metro:6', toStopId: 'metro:2' },
     { id: newLegId(), routeId: 'izdeniz', dirId: '0', fromStopId: 'ferry:konak', toStopId: 'ferry:karsiyaka' },
   ]
-}
-
-const STORAGE_KEY = 'izmir-ag.journey.v1'
-
-export function loadJourney(today: string): Journey {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) {
-      const j = JSON.parse(raw) as Journey
-      // Ayarlara sonradan eklenen alanlar için varsayılanlarla birleştir; tarih her açılışta bugüne döner.
-      return { ...defaultJourney(today), ...j, date: today, settings: { ...DEFAULT_SETTINGS, ...j.settings } }
-    }
-  } catch {
-    /* depolama yoksa varsayılan */
-  }
-  return defaultJourney(today)
-}
-
-export function saveJourney(j: Journey) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(j))
-  } catch {
-    /* depolama kapalıysa taslak yalnızca bu oturumda kalır */
-  }
 }

@@ -131,7 +131,8 @@ function FitTo({ paths, padding }: { paths: [number, number][][]; padding: FitPa
   const key = JSON.stringify([paths.map((p) => [p[0], p[p.length - 1], p.length]), padding, resizeTick])
   useEffect(() => {
     const pts = paths.flat()
-    if (pts.length < 2) return
+    // Biniş yoksa tüm raylı ağı göster (senaryo boşken ya da binişler temizlenince).
+    const target = pts.length > 1 ? latLngBounds(pts) : IZMIR_BOUNDS
     const size = map.getSize()
     if (size.x === 0 || size.y === 0) return
     // Harita, kartların kapladığı kenardan küçükse (dar pencere) boşluğu orantılı küçült; aksi hâlde Leaflet NaN üretir.
@@ -141,7 +142,7 @@ function FitTo({ paths, padding }: { paths: [number, number][][]; padding: FitPa
     // flyToBounds, önceki uçuş bitmeden yenisi gelirse (hızlı düzenleme, StrictMode) ara durumda takılabiliyor;
     // süren animasyonu durdurup fitBounds ile yakınlaştırmak her durumda tutarlı.
     map.stop()
-    map.fitBounds(latLngBounds(pts), {
+    map.fitBounds(target, {
       paddingTopLeft: [tl.x * sx, tl.y * sy],
       paddingBottomRight: [br.x * sx, br.y * sy],
       maxZoom: 15,
