@@ -1,0 +1,132 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Barlow', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Barlow Condensed', 'Barlow', ui-sans-serif, sans-serif;
+}
+
+:root {
+  color-scheme: light;
+  --bg: #f7f6f2;
+  --surface: #ffffff;
+  --ink: #16181d;
+  --muted: #5d6370;
+  --line: #e2e0d8;
+  --track: #ebe9e2;
+  --bar: #c9c6bb;
+  --izban: #d7262e;
+  --metro: #1e5aa8;
+  --from: #0f766e;
+  --refund: #8fc9a8;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --bg: #15171b;
+    --surface: #1d2025;
+    --ink: #f1efe9;
+    --muted: #a0a5b0;
+    --line: #2e323a;
+    --track: #2a2e35;
+    --bar: #4a4f59;
+    --izban: #ef4a50;
+    --metro: #5b8fdc;
+    --from: #2dd4bf;
+    --refund: #4f9f74;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #15171b;
+  --surface: #1d2025;
+  --ink: #f1efe9;
+  --muted: #a0a5b0;
+  --line: #2e323a;
+  --track: #2a2e35;
+  --bar: #4a4f59;
+  --izban: #ef4a50;
+  --metro: #5b8fdc;
+  --from: #2dd4bf;
+  --refund: #4f9f74;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.leaflet-container {
+  background: var(--track);
+  font-family: var(--font-sans);
+}
+
+/* Hat renkleri öne çıksın diye altlık haritayı hafif soluklaştır; karanlık temada ters çevir. */
+.basemap {
+  filter: saturate(0.55) brightness(1.03);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .basemap {
+    filter: invert(1) hue-rotate(180deg) saturate(0.4) brightness(0.85) contrast(0.9);
+  }
+}
+
+:root[data-theme='dark'] .basemap {
+  filter: invert(1) hue-rotate(180deg) saturate(0.4) brightness(0.85) contrast(0.9);
+}
+
+/* Durak etiketleri */
+.leaflet-tooltip.station-tip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1.2;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.15);
+}
+
+.leaflet-tooltip.station-tip::before {
+  display: none;
+}
+
+.station-tip__meta {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.station-tip__role {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.station-tip--from {
+  border-color: var(--from);
+}
+
+.station-tip--from .station-tip__role {
+  color: var(--from);
+}
+
+.station-tip--to {
+  border-color: var(--ink);
+}
