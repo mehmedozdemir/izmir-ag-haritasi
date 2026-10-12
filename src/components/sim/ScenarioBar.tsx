@@ -22,19 +22,27 @@ type Props = {
   onLoadExample: () => void
   routesById: Map<string, RouteInfo> | undefined
   floating: boolean
+  /** Şerit satırının sağ ucuna yerleşecek öğe (ör. kart yerleşimi seçici). */
+  trailing?: React.ReactNode
+  /** Form ve boş durum kartının hizası (sağ üst yerleşimde sağa). */
+  align?: 'start' | 'end'
 }
 
 const shortDate = (iso: string) => iso.split('-').reverse().slice(0, 2).join('.')
 
 /** Biniş kartlarının üstündeki senaryo şeridi + oluşturma/düzenleme formu. */
 export function ScenarioBar(props: Props) {
-  const { scenarios, activeId, editing, onEditing, floating } = props
+  const { scenarios, activeId, editing, onEditing, floating, trailing, align = 'start' } = props
   const editingScenario = editing && editing !== 'new' ? scenarios.find((s) => s.id === editing) : undefined
   const surface = floating ? 'shadow-md' : ''
+  // Harita üzerinde form/boş durum kartı biniş sütunu genişliğinde, yerleşime göre sola ya da sağa hizalı.
+  const panelWidth = floating ? `w-[360px] max-w-full ${align === 'end' ? 'self-end' : 'self-start'}` : ''
 
   return (
     <div className="flex min-w-0 flex-col gap-2">
-      <div className="pointer-events-auto flex min-w-0 items-stretch gap-1.5 overflow-x-auto pb-1" role="tablist" aria-label="Senaryolar">
+      <div className="flex min-w-0 items-start gap-2">
+      {/* Şerit yalnızca kartlar kadar yer kaplar (boş alan haritayı engellemez); sığmazsa yatay kayar. */}
+      <div className="thin-scroll pointer-events-auto flex min-w-0 items-stretch gap-1.5 overflow-x-auto pb-1" role="tablist" aria-label="Senaryolar">
         <button
           type="button"
           onClick={() => onEditing(editing === 'new' ? null : 'new')}
@@ -64,9 +72,11 @@ export function ScenarioBar(props: Props) {
           />
         ))}
       </div>
+      {trailing && <div className="pointer-events-auto ml-auto shrink-0">{trailing}</div>}
+      </div>
 
       {scenarios.length === 0 && editing !== 'new' && (
-        <div className={`pointer-events-auto rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3 text-sm ${surface}`}>
+        <div className={`pointer-events-auto rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3 text-sm ${surface} ${panelWidth}`}>
           <p className="font-semibold text-[var(--ink)]">Henüz senaryo yok</p>
           <p className="mt-0.5 text-xs leading-relaxed text-[var(--muted)]">
             Bir senaryo oluşturun; ardından binişleri sırayla ekleyerek her binişte kartınızdan ne kadar kesileceğini görün.
@@ -82,6 +92,7 @@ export function ScenarioBar(props: Props) {
           mode="new"
           initial={props.newInput()}
           floating={floating}
+          className={panelWidth}
           onClose={() => onEditing(null)}
           onSubmit={(input) => {
             props.onCreate(input)
@@ -95,6 +106,7 @@ export function ScenarioBar(props: Props) {
           mode="edit"
           initial={scenarioToInput(editingScenario)}
           floating={floating}
+          className={panelWidth}
           legCount={editingScenario.legs.length}
           onClose={() => onEditing(null)}
           onChange={(input) => props.onUpdate(applyInput(editingScenario, input))}
@@ -169,6 +181,7 @@ type FormProps = {
   mode: 'new' | 'edit'
   initial: ScenarioInput
   floating: boolean
+  className?: string
   legCount?: number
   onClose: () => void
   onSubmit?: (input: ScenarioInput) => void
@@ -178,7 +191,7 @@ type FormProps = {
   onDelete?: () => void
 }
 
-function ScenarioForm({ mode, initial, floating, legCount = 0, onClose, onSubmit, onChange, onClearLegs, onDuplicate, onDelete }: FormProps) {
+function ScenarioForm({ mode, initial, floating, className = '', legCount = 0, onClose, onSubmit, onChange, onClearLegs, onDuplicate, onDelete }: FormProps) {
   const [draft, setDraft] = useState(initial)
   const ref = useRef<HTMLFormElement>(null)
   // Düzenlemede değerler doğrudan senaryodan gelir ve değişiklikler anında uygulanır (yan panelden yapılan
@@ -211,7 +224,7 @@ function ScenarioForm({ mode, initial, floating, legCount = 0, onClose, onSubmit
         if (mode === 'new') onSubmit?.(input)
         else onClose()
       }}
-      className={`pointer-events-auto flex shrink-0 flex-col gap-2.5 rounded-xl border border-[var(--ink)] bg-[var(--surface)] p-3 text-sm ${floating ? 'w-[360px] max-w-full shadow-lg' : ''}`}
+      className={`pointer-events-auto flex shrink-0 flex-col gap-2.5 rounded-xl border border-[var(--ink)] bg-[var(--surface)] p-3 text-sm ${floating ? 'shadow-lg' : ''} ${className}`}
       aria-label={mode === 'new' ? 'Yeni senaryo' : 'Senaryo bilgileri'}
     >
       <div className="flex items-center justify-between">

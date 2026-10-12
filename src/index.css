@@ -183,3 +183,9 @@ body {
 .station-tip--to {
   border-color: var(--ink);
 }
+
+/* Yatay kayan şeritlerde ince kaydırma çubuğu (yalnızca taşma olduğunda görünür). */
+.thin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted) transparent;
+}

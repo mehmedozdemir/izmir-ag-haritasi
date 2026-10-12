@@ -33,9 +33,9 @@ const MAP_LAYOUTS: { id: MapLayout; label: string; icon: string }[] = [
 // Kartların haritada kapladığı kenar; yakınlaştırmada bu alan boş bırakılır.
 const FIT_PADDING: Record<LegLayout, FitPadding> = {
   sidebar: { topLeft: [50, 50], bottomRight: [50, 50] },
-  'top-left': { topLeft: [400, 60], bottomRight: [50, 50] },
-  'top-right': { topLeft: [50, 60], bottomRight: [400, 50] },
-  bottom: { topLeft: [50, 60], bottomRight: [50, 220] },
+  'top-left': { topLeft: [400, 110], bottomRight: [50, 50] },
+  'top-right': { topLeft: [50, 110], bottomRight: [400, 50] },
+  bottom: { topLeft: [50, 60], bottomRight: [50, 300] },
 }
 
 function readLayout(): MapLayout {
@@ -118,6 +118,7 @@ export default function App() {
       detail={sim.results[(active ?? placeholder).detailCard]}
       activeLegId={activeLegId}
       onActiveLeg={onActive}
+      switcher={<LayoutSwitcher value={mapLayout} onChange={chooseLayout} />}
     />
   )
 
@@ -156,7 +157,11 @@ export default function App() {
             {legLayout !== 'sidebar' && (
               <>
                 {workspace(legLayout)}
-                <LayoutSwitcher value={mapLayout} onChange={chooseLayout} />
+                {legLayout === 'bottom' && (
+                  <div className="absolute top-3 left-1/2 z-[650] -translate-x-1/2">
+                    <LayoutSwitcher value={mapLayout} onChange={chooseLayout} />
+                  </div>
+                )}
               </>
             )}
           </>
@@ -232,23 +237,21 @@ function LayoutSwitcher({ value, onChange }: { value: MapLayout; onChange: (l: M
     <div
       role="radiogroup"
       aria-label="Biniş kartlarının yeri"
-      className={`absolute top-3 z-[650] flex items-center gap-0.5 rounded-full bg-[var(--bg)]/90 p-1 text-xs font-semibold shadow-sm backdrop-blur ${
-        // Kartların karşı köşesinde dursun ki başlıklarıyla çakışmasın.
-        value === 'top-left' ? 'right-3' : value === 'top-right' ? 'left-3' : 'left-1/2 -translate-x-1/2'
-      }`}
+      className="flex items-center gap-0.5 rounded-full bg-[var(--bg)]/90 p-1 text-xs font-semibold whitespace-nowrap shadow-sm backdrop-blur"
     >
-      <span className="px-2 text-[var(--muted)]">Kartlar</span>
+      {/* Yer kaplamasın diye yalnızca simge; adı ipucu ve ekran okuyucu etiketinde. */}
       {MAP_LAYOUTS.map((l) => (
         <button
           key={l.id}
           type="button"
           role="radio"
           aria-checked={value === l.id}
+          aria-label={`Kartlar: ${l.label}`}
+          title={`Kartlar: ${l.label}`}
           onClick={() => onChange(l.id)}
-          className={`flex items-center gap-1 rounded-full px-2.5 py-1 transition ${value === l.id ? 'bg-[var(--ink)] text-[var(--bg)]' : 'text-[var(--ink)] hover:bg-[var(--track)]'}`}
+          className={`grid h-7 w-7 place-items-center rounded-full transition ${value === l.id ? 'bg-[var(--ink)] text-[var(--bg)]' : 'text-[var(--ink)] hover:bg-[var(--track)]'}`}
         >
-          <span aria-hidden className="text-sm leading-none">{l.icon}</span>
-          {l.label}
+          <span aria-hidden className="text-base leading-none">{l.icon}</span>
         </button>
       ))}
     </div>

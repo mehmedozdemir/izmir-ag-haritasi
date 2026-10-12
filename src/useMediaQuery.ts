@@ -8,9 +8,11 @@ export function useMediaQuery(query: string): boolean {
       mql.addEventListener('change', onChange)
       // Bazı ortamlarda (cihaz/viewport emülasyonu) 'change' tetiklenmeyebiliyor; resize ile de denetle.
       window.addEventListener('resize', onChange)
+      document.addEventListener('visibilitychange', onChange)
       return () => {
         mql.removeEventListener('change', onChange)
         window.removeEventListener('resize', onChange)
+        document.removeEventListener('visibilitychange', onChange)
       }
     },
     () => window.matchMedia(query).matches,

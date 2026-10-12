@@ -25,6 +25,8 @@ type Props = {
   detail: SimulationResult
   activeLegId: string | null
   onActiveLeg: (id: string | null) => void
+  /** Kart yerleşimi seçici; üst yerleşimlerde senaryo şeridinin sağ ucunda durur. */
+  switcher?: React.ReactNode
 }
 
 /** Senaryo şeridi + seçili senaryonun binişleri; yan panelde ya da harita üzerinde yüzen kartlar olarak. */
@@ -46,6 +48,8 @@ export function SimWorkspace(p: Props) {
       onLoadExample={p.onLoadExample}
       routesById={p.routesById}
       floating={floating}
+      align={p.layout === 'top-right' ? 'end' : 'start'}
+      trailing={p.layout === 'top-left' || p.layout === 'top-right' ? p.switcher : undefined}
     />
   )
 
@@ -73,17 +77,23 @@ export function SimWorkspace(p: Props) {
   }
 
   // Kapsayıcı tıklamaları haritaya geçirir; yalnızca kartlar etkileşimlidir.
-  const position =
-    p.layout === 'top-left'
-      ? 'top-3 bottom-3 left-3 w-[360px]'
-      : p.layout === 'top-right'
-        ? 'top-3 bottom-3 right-3 w-[360px]'
-        : 'bottom-3 left-3 right-3 max-h-[85%]'
+  // Senaryo şeridi harita genişliği boyunca soldan sağa uzanır; binişler altında (üst yerleşimlerde
+  // sol/sağ sütun) ya da şeridin altında soldan sağa (alt yerleşim) dizilir.
+  if (p.layout === 'bottom') {
+    return (
+      <section aria-label="Senaryo ve binişler" className="pointer-events-none absolute right-3 bottom-3 left-3 z-[600] flex max-h-[85%] flex-col gap-2">
+        <div className="shrink-0">{bar}</div>
+        {legs}
+      </section>
+    )
+  }
 
   return (
-    <section aria-label="Senaryo ve binişler" className={`pointer-events-none absolute z-[600] flex flex-col gap-2 ${position}`}>
-      <div className={`shrink-0 ${p.layout === 'bottom' ? 'max-w-full self-start' : ''}`}>{bar}</div>
-      {legs}
+    <section aria-label="Senaryo ve binişler" className="pointer-events-none absolute inset-3 z-[600] flex flex-col gap-2">
+      <div className="shrink-0">{bar}</div>
+      {legs && (
+        <div className={`flex min-h-0 w-[360px] flex-col gap-2 ${p.layout === 'top-right' ? 'self-end' : ''}`}>{legs}</div>
+      )}
     </section>
   )
 }
