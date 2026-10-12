@@ -11,9 +11,10 @@ const PORT = Number(process.env.API_PORT ?? (isProd ? process.env.PORT : undefin
 const todayInIstanbul = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Istanbul' }).format(new Date())
 
 const app = new Hono()
-app.use('/api/*', logger())
-
+// Sağlık kontrolü (Docker healthcheck) logları doldurmasın diye logger'dan önce tanımlı.
 app.get('/api/health', (c) => c.json({ ok: true }))
+
+app.use('/api/*', logger())
 
 app.get('/api/fare', async (c) => {
   const from = Number(c.req.query('from'))

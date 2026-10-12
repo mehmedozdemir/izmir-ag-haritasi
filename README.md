@@ -18,12 +18,16 @@ npm run build
 npm start            # PORT ortam değişkeni, varsayılan 8787
 ```
 
-Docker:
+Docker (Compose):
 
 ```bash
-docker build -t izmir-ag-haritasi .
-docker run -p 8080:8080 izmir-ag-haritasi
+docker compose up -d --build     # http://localhost:8090
+docker compose logs -f           # loglar
+docker compose down              # durdur
 ```
+
+Host portu `HOST_PORT` ile değiştirilebilir (ör. `HOST_PORT=9000 docker compose up -d`). Container `restart: unless-stopped`
+ile Docker açıldığında otomatik başlar ve `/api/health` üzerinden sağlık kontrolü yapılır.
 
 Node.js ≥ 22.18 gerekir (sunucu TypeScript dosyaları Node'un yerleşik tip ayıklamasıyla çalışır).
 
