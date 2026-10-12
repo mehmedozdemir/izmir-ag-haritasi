@@ -13,6 +13,16 @@ export type FareItem = {
   refund: number
 }
 
+/** Mesafe bazlı ücret: kart tipi başına ücret, binişte gereken (bloke) bakiye ve inişte iade. */
+export type DistanceQuoteItem = { price: number; minBalance: number; refund: number }
+
+export type DistanceFareResult = {
+  from: string
+  to: string
+  km: number
+  quote: Record<'tam' | 'genc' | 'ogretmen' | 'yas60', DistanceQuoteItem>
+}
+
 export type FareResult = {
   from: string
   to: string

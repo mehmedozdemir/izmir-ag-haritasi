@@ -11,8 +11,8 @@ type Props = {
 
 // Kişisel kullanımda OSM'nin kendi tile sunucusu yeterli. Şirket içi/yoğun kullanımda
 // OSM tile politikası gereği VITE_TILE_URL ile ticari bir sağlayıcıya ya da kendi sunucunuza geçin.
-const TILE_URL = import.meta.env.VITE_TILE_URL ?? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
-const TILE_ATTRIBUTION =
+export const TILE_URL = import.meta.env.VITE_TILE_URL ?? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+export const TILE_ATTRIBUTION =
   import.meta.env.VITE_TILE_ATTRIBUTION ?? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> katkıcıları'
 
 const IZMIR_BOUNDS =latLngBounds(stations.map((s) => [s.lat, s.lng]))

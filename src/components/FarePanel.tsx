@@ -44,11 +44,6 @@ export function FarePanel(props: Props) {
 
   return (
     <div className="flex flex-col gap-5">
-      <header>
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">İzmir Raylı Sistem</p>
-        <h1 className="font-display text-3xl font-bold leading-none text-[var(--ink)]">İZBAN Ücret Haritası</h1>
-      </header>
-
       <section aria-label="Güzergah" className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3">
         <div className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2">
           <Dot kind="from" />

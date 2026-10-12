@@ -1,13 +1,14 @@
 // tarife.izmirimkart.com.tr İZBAN ücret servisinin istemcisi.
 // Uç nokta CORS başlığı döndürmediği için tarayıcı yerine bu sunucu üzerinden çağrılır.
 import { readFileSync } from 'node:fs'
-import { Agent, get } from 'node:https'
+import { Agent } from 'node:https'
 import { rootCertificates } from 'node:tls'
 import type { FareResult } from './fare-types.ts'
+import { FareError, TtlCache, fetchUpstream } from './upstream.ts'
+
+export { FareError } from './upstream.ts'
 
 const UPSTREAM = 'https://tarife.izmirimkart.com.tr/IzbanTutarHesapla'
-const CACHE_TTL_MS = 12 * 60 * 60 * 1000
-const UPSTREAM_TIMEOUT_MS = 10_000
 
 // Sunucu TLS zincirindeki ara sertifikayı (RapidSSL TLS RSA CA G1) göndermiyor.
 // Doğrulamayı kapatmak yerine eksik ara sertifikayı güven listesine ekliyoruz.
@@ -16,30 +17,6 @@ const agent = new Agent({
   keepAlive: true,
   ca: [...rootCertificates, readFileSync(new URL('./certs/rapidssl-tls-rsa-ca-g1.pem', import.meta.url), 'utf8')],
 })
-
-function getJson(url: string): Promise<unknown> {
-  return new Promise((resolve, reject) => {
-    const req = get(url, { agent, timeout: UPSTREAM_TIMEOUT_MS }, (res) => {
-      if (res.statusCode !== 200) {
-        res.resume()
-        reject(new FareError(502, `Tarife servisi hata döndürdü (${res.statusCode})`))
-        return
-      }
-      let body = ''
-      res.setEncoding('utf8')
-      res.on('data', (chunk) => (body += chunk))
-      res.on('end', () => {
-        try {
-          resolve(JSON.parse(body))
-        } catch {
-          reject(new FareError(502, 'Tarife servisinden beklenmeyen yanıt'))
-        }
-      })
-    })
-    req.on('timeout', () => req.destroy(new Error('Zaman aşımı')))
-    req.on('error', reject)
-  })
-}
 
 type UpstreamFare = {
   BinisIstasyonu: string
@@ -62,15 +39,7 @@ type UpstreamFare = {
   IadeSerbest: number
 }
 
-export class FareError extends Error {
-  readonly status: 400 | 502
-  constructor(status: 400 | 502, message: string) {
-    super(message)
-    this.status = status
-  }
-}
-
-const cache = new Map<string, { at: number; value: FareResult }>()
+const cache = new TtlCache<FareResult>(12 * 60 * 60 * 1000)
 
 function normalize(raw: UpstreamFare, date: string): FareResult {
   return {
@@ -97,23 +66,10 @@ export async function getFare(fromId: number, toId: number, date: string): Promi
     throw new FareError(400, 'Geçersiz tarih (YYYY-AA-GG bekleniyor)')
   }
 
-  const key = `${fromId}/${toId}/${date}`
-  const hit = cache.get(key)
-  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value
-
-  // aktarma=0, htt=0: 2025-09-01 sonrası tarifede bu parametreler kullanılmıyor.
-  const url = `${UPSTREAM}/${fromId}/${toId}/0/0/${date}`
-  let raw: UpstreamFare | null
-  try {
-    raw = (await getJson(url)) as UpstreamFare | null
-  } catch (err) {
-    if (err instanceof FareError) throw err
-    console.error('Tarife servisi isteği başarısız:', url, err instanceof Error ? err.message : err)
-    throw new FareError(502, 'Tarife servisine ulaşılamadı')
-  }
-  if (!raw || typeof raw.TamUcret !== 'number') throw new FareError(502, 'Tarife servisinden beklenmeyen yanıt')
-
-  const value = normalize(raw, date)
-  cache.set(key, { at: Date.now(), value })
-  return value
+  return cache.getOrLoad(`${fromId}/${toId}/${date}`, async () => {
+    // aktarma=0, htt=0: 2025-09-01 sonrası tarifede bu parametreler kullanılmıyor.
+    const raw = (await fetchUpstream(`${UPSTREAM}/${fromId}/${toId}/0/0/${date}`, agent)) as UpstreamFare | null
+    if (!raw || typeof raw.TamUcret !== 'number') throw new FareError(502, 'Tarife servisinden beklenmeyen yanıt')
+    return normalize(raw, date)
+  })
 }

@@ -1,7 +1,9 @@
 import { serve } from '@hono/node-server'
 import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
+import { compress } from 'hono/compress'
 import { logger } from 'hono/logger'
+import { getEshotFare } from './eshot.ts'
 import { FareError, getFare } from './fare.ts'
 
 const isProd = process.env.NODE_ENV === 'production'
@@ -28,8 +30,20 @@ app.get('/api/fare', async (c) => {
   }
 })
 
+// ESHOT "Gittiğin Kadar Öde" hatları: dir 1 = gidiş, 2 = dönüş; htt=1 Halk Taşıt saati.
+app.get('/api/fare/eshot', async (c) => {
+  const q = (k: string) => Number(c.req.query(k))
+  try {
+    return c.json(await getEshotFare(q('line'), q('dir'), q('from'), q('to'), c.req.query('htt') === '1'))
+  } catch (err) {
+    if (err instanceof FareError) return c.json({ error: err.message }, err.status)
+    throw err
+  }
+})
+
 // Üretimde derlenmiş frontend'i de bu sunucu servis eder (tek dağıtım birimi).
 if (isProd) {
+  app.use('/*', compress())
   app.use('/*', serveStatic({ root: './dist' }))
   app.get('*', serveStatic({ path: './dist/index.html' }))
 }

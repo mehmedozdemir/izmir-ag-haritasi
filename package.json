@@ -10,7 +10,9 @@
     "build": "tsc -b && vite build",
     "start": "cross-env NODE_ENV=production node server/index.ts",
     "data:network": "node scripts/build-network.mjs",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "data:transit": "node scripts/build-transit.mjs",
+    "test": "vitest run"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.0",
@@ -30,9 +32,11 @@
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
     "concurrently": "^9.2.0",
+    "fflate": "^0.8.3",
     "tailwindcss": "^4.1.0",
     "typescript": "~6.0.2",
-    "vite": "^8.3.0"
+    "vite": "^8.3.0",
+    "vitest": "^5.0.4"
   },
   "engines": {
     "node": ">=22.18"

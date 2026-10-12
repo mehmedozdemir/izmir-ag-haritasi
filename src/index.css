@@ -52,6 +52,59 @@
   --refund: #4f9f74;
 }
 
+:root {
+  --good: #15803d;
+  --good-soft: #dcfce7;
+  --warn: #b45309;
+  --info: #1d4ed8;
+  --info-soft: #dbeafe;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --good: #4ade80;
+    --good-soft: #14321f;
+    --warn: #fbbf24;
+    --info: #93c5fd;
+    --info-soft: #1e2a44;
+  }
+}
+
+:root[data-theme='dark'] {
+  --good: #4ade80;
+  --good-soft: #14321f;
+  --warn: #fbbf24;
+  --info: #93c5fd;
+  --info-soft: #1e2a44;
+}
+
+@layer components {
+  .input {
+    width: 100%;
+    min-width: 0;
+    border-radius: 0.375rem;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    padding: 0.3rem 0.5rem;
+    font-size: 0.875rem;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Simülasyon haritasındaki numaralı biniş işaretleri */
+.leg-pin {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 3px solid #fff;
+  border-radius: 9999px;
+  color: #fff;
+  font: 700 13px/1 var(--font-display);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.35);
+}
+
 html,
 body,
 #root {
