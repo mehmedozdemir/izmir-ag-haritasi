@@ -8,6 +8,8 @@ type Props = {
   fromId: number | null
   toId: number | null
   onStationClick: (tarifeId: number) => void
+  /** Haritanın sağına binen panelin genişliği (px); sığdırmada bu kenar boş bırakılır. */
+  rightInset?: number
 }
 
 // Kişisel kullanımda OSM'nin kendi tile sunucusu yeterli. Şirket içi/yoğun kullanımda
@@ -18,7 +20,7 @@ export const TILE_ATTRIBUTION =
 
 const IZMIR_BOUNDS =latLngBounds(stations.map((s) => [s.lat, s.lng]))
 
-export function NetworkMap({ fromId, toId, onStationClick }: Props) {
+export function NetworkMap({ fromId, toId, onStationClick, rightInset = 0 }: Props) {
   const segment = useMemo(
     () => (fromId !== null && toId !== null ? izbanSegment(fromId, toId) : []),
     [fromId, toId],
@@ -26,10 +28,10 @@ export function NetworkMap({ fromId, toId, onStationClick }: Props) {
   const hasRoute = segment.length > 1
 
   return (
-    <MapContainer bounds={IZMIR_BOUNDS} boundsOptions={{ padding: [24, 24] }} zoomControl={false} className="h-full w-full">
+    <MapContainer bounds={IZMIR_BOUNDS} boundsOptions={{ paddingTopLeft: [24, 24], paddingBottomRight: [24 + rightInset, 24] }} zoomControl={false} className="h-full w-full">
       <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} maxZoom={19} className="basemap" />
       <InvalidateOnResize />
-      <FitToRoute segment={segment} />
+      <FitToRoute segment={segment} rightInset={rightInset} />
 
       <Pane name="lines" style={{ zIndex: 410 }}>
         {lines.map((line) => (
@@ -135,11 +137,16 @@ function StationMarker({
   )
 }
 
-function FitToRoute({ segment }: { segment: [number, number][] }) {
+function FitToRoute({ segment, rightInset }: { segment: [number, number][]; rightInset: number }) {
   const map = useMap()
   useEffect(() => {
     if (segment.length > 1) {
-      map.flyToBounds(latLngBounds(segment), { padding: [60, 60], maxZoom: 14, duration: 0.8 })
+      map.flyToBounds(latLngBounds(segment), {
+        paddingTopLeft: [60, 60],
+        paddingBottomRight: [60 + rightInset, 60],
+        maxZoom: 14,
+        duration: 0.8,
+      })
     }
   }, [map, segment])
   return null

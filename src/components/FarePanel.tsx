@@ -119,9 +119,6 @@ function FareResultView({
   cardType: FareItem['type']
   onCardType: (t: FareItem['type']) => void
 }) {
-  const tlFares = fare.fares.filter((f) => f.unit === 'TL')
-  const credit = fare.fares.find((f) => f.unit === 'kontör')
-  const max = Math.max(...tlFares.map((f) => f.price))
   const selected = fare.fares.find((f) => f.type === cardType) ?? fare.fares[0]
 
   return (
@@ -131,95 +128,133 @@ function FareResultView({
         <Stat label="Durak" value={`${stops} durak`} />
       </section>
 
-      <section aria-label="Kart tiplerine göre ücret">
-        <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">Kart tipine göre ücret</h2>
-        <ul className="flex flex-col gap-1.5">
-          {tlFares.map((f) => {
+      <section aria-label="Kart tipine göre net ücret">
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">Kart tipin · net ücret</h2>
+        <div className="grid grid-cols-2 gap-1.5">
+          {fare.fares.map((f) => {
             const active = f.type === selected.type
+            const { label, color } = CARD_LOOK[f.type]
             return (
-              <li key={f.type}>
-                <button
-                  type="button"
-                  onClick={() => onCardType(f.type)}
-                  aria-pressed={active}
-                  className={`group w-full rounded-lg border px-3 py-2 text-left transition ${
-                    active ? 'border-[var(--ink)] bg-[var(--surface)]' : 'border-transparent hover:bg-[var(--surface)]'
-                  }`}
-                >
-                  <div className="flex items-baseline justify-between">
-                    <span className={`text-sm ${active ? 'font-semibold text-[var(--ink)]' : 'text-[var(--muted)]'}`}>{f.label}</span>
-                    <span className="font-display text-xl font-bold tabular-nums text-[var(--ink)]">
-                      {tl(f.price)} <span className="text-sm font-semibold text-[var(--muted)]">TL</span>
-                    </span>
-                  </div>
-                  <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-[var(--track)]">
-                    <div
-                      className="h-full rounded-full transition-[width] duration-500"
-                      style={{ width: `${(f.price / max) * 100}%`, background: active ? 'var(--izban)' : 'var(--bar)' }}
-                    />
-                  </div>
-                </button>
-              </li>
+              <button
+                key={f.type}
+                type="button"
+                onClick={() => onCardType(f.type)}
+                aria-pressed={active}
+                className={`rounded-lg border px-3 py-2 text-left transition ${f.type === 'serbest' ? 'col-span-2' : ''} ${
+                  active ? 'border-transparent' : 'border-[var(--line)] hover:border-[var(--muted)]'
+                }`}
+                style={active ? { boxShadow: `inset 0 0 0 2px ${color}`, background: `color-mix(in srgb, ${color} 12%, var(--surface))` } : undefined}
+              >
+                <span className="flex items-center gap-1.5 text-xs font-semibold" style={{ color }}>
+                  <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: color }} />
+                  {label}
+                </span>
+                <span className="font-display text-xl font-bold tabular-nums text-[var(--ink)]">{amount(f, f.price)}</span>
+              </button>
             )
           })}
-        </ul>
-        {credit && (
-          <button
-            type="button"
-            onClick={() => onCardType(credit.type)}
-            aria-pressed={selected.type === credit.type}
-            className={`mt-1.5 flex w-full items-baseline justify-between rounded-lg border px-3 py-2 text-left transition ${
-              selected.type === credit.type ? 'border-[var(--ink)] bg-[var(--surface)]' : 'border-transparent hover:bg-[var(--surface)]'
-            }`}
-          >
-            <span className="text-sm text-[var(--muted)]">{credit.label} (kontörlü)</span>
-            <span className="font-display text-xl font-bold tabular-nums text-[var(--ink)]">
-              {credit.price} <span className="text-sm font-semibold text-[var(--muted)]">kontör</span>
-            </span>
-          </button>
-        )}
+        </div>
       </section>
 
-      <BalanceBreakdown fare={selected} />
+      <PaymentSteps fare={selected} />
     </div>
   )
 }
 
-/** Binişte bloke edilen tutarın ne kadarının ödendiğini, ne kadarının inişte iade edildiğini gösterir. */
-function BalanceBreakdown({ fare }: { fare: FareItem }) {
-  const fmt = (n: number) => (fare.unit === 'TL' ? `${tl(n)} TL` : `${n} kontör`)
+/** Kart tipi görünümü (simülasyondaki kart renkleriyle aynı). */
+const CARD_LOOK: Record<FareItem['type'], { label: string; color: string }> = {
+  tam: { label: 'Tam', color: 'var(--card-tam)' },
+  ogrenci: { label: 'Genç (Öğrenci)', color: 'var(--card-genc)' },
+  ogretmen: { label: 'Öğretmen', color: 'var(--card-ogretmen)' },
+  yas60: { label: '60 Yaş', color: 'var(--card-yas60)' },
+  serbest: { label: 'Serbest (kontörlü)', color: 'var(--muted)' },
+}
+
+const amount = (f: FareItem, n: number) => (f.unit === 'TL' ? `${tl(n)} TL` : `${n} kontör`)
+
+/**
+ * Seçili kartla ödeme adımları: binişte düşen (bloke) tutar, inişte iade ve net ücret.
+ * İZBAN'da binişte hattın sonuna kadarki ücret bloke edilir; inişte okutulunca fark geri yüklenir.
+ */
+function PaymentSteps({ fare }: { fare: FareItem }) {
+  const { label, color } = CARD_LOOK[fare.type]
+  const hasRefund = fare.refund > 0
   const paidPct = fare.minBalance > 0 ? (fare.price / fare.minBalance) * 100 : 100
 
   return (
-    <section aria-label="Kart bakiyesi" className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4">
-      <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">{fare.label} kart · binişte gereken bakiye</h2>
-      <p className="mt-1 font-display text-3xl font-bold tabular-nums text-[var(--ink)]">{fmt(fare.minBalance)}</p>
+    <section aria-label="Ödeme adımları" className="overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--surface)]">
+      <header className="flex items-center justify-between gap-3 px-4 pt-3" style={{ borderTop: `3px solid ${color}` }}>
+        <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+          <span style={{ color }}>{label}</span> kart ile ödeme
+        </h2>
+      </header>
 
-      <div className="mt-3 flex h-3 overflow-hidden rounded-full bg-[var(--track)]" role="img" aria-label={`Ödenen ${fmt(fare.price)}, iade ${fmt(fare.refund)}`}>
-        <div className="h-full bg-[var(--izban)]" style={{ width: `${paidPct}%` }} />
-        {fare.refund > 0 && <div className="h-full bg-[var(--refund)]" style={{ width: `${100 - paidPct}%` }} />}
+      <ol className="mt-2 px-4">
+        <Step
+          n={1}
+          tone="out"
+          title="Binişte (turnikede)"
+          text={hasRefund ? 'Kartından düşülür (bloke edilir)' : 'Kartından düşülür'}
+          value={`−${amount(fare, fare.minBalance)}`}
+        />
+        {hasRefund && (
+          <Step n={2} tone="in" title="İnişte (iade cihazında)" text="Kartına geri yüklenir" value={`+${amount(fare, fare.refund)}`} />
+        )}
+      </ol>
+
+      <div className="mx-4 mt-1 flex items-baseline justify-between border-t-2 border-[var(--ink)]/20 py-3">
+        <span className="text-sm font-semibold text-[var(--ink)]">= Net yolculuk ücreti</span>
+        <span className="font-display text-3xl font-bold tabular-nums text-[var(--ink)]">{amount(fare, fare.price)}</span>
       </div>
 
-      <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
-        <div>
-          <dt className="flex items-center gap-1.5 text-[var(--muted)]">
-            <span className="h-2 w-2 rounded-full bg-[var(--izban)]" /> Ödenen
-          </dt>
-          <dd className="font-semibold tabular-nums text-[var(--ink)]">{fmt(fare.price)}</dd>
+      {hasRefund && (
+        <div className="px-4">
+          <div className="flex h-2.5 overflow-hidden rounded-full bg-[var(--track)]" role="img" aria-label={`Binişte düşen ${amount(fare, fare.minBalance)}: ${amount(fare, fare.price)} ücret, ${amount(fare, fare.refund)} iade`}>
+            <div className="h-full bg-[var(--izban)]" style={{ width: `${paidPct}%` }} />
+            <div className="h-full bg-[var(--refund)]" style={{ width: `${100 - paidPct}%` }} />
+          </div>
+          <div className="mt-1 flex justify-between text-[11px] text-[var(--muted)]">
+            <span className="flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-[var(--izban)]" /> Ücret
+            </span>
+            <span className="flex items-center gap-1">
+              İade <span className="h-2 w-2 rounded-full bg-[var(--refund)]" />
+            </span>
+          </div>
         </div>
-        <div>
-          <dt className="flex items-center gap-1.5 text-[var(--muted)]">
-            <span className="h-2 w-2 rounded-full bg-[var(--refund)]" /> İnişte iade
-          </dt>
-          <dd className="font-semibold tabular-nums text-[var(--ink)]">{fmt(fare.refund)}</dd>
-        </div>
-      </dl>
-      {fare.refund > 0 && (
-        <p className="mt-3 text-xs leading-relaxed text-[var(--muted)]">
-          Binişte bu tutar kartınızda bloke edilir; iniş istasyonunda kartınızı okuttuğunuzda fark iade edilir. Çıkışta okutmazsanız iade alamazsınız.
-        </p>
       )}
+
+      <div className="mt-3 space-y-1.5 bg-[var(--bg)] px-4 py-3 text-xs leading-relaxed text-[var(--muted)]">
+        <p>
+          💳 Binişte kartında en az <strong className="text-[var(--ink)]">{amount(fare, fare.minBalance)}</strong> bulunmalı.
+        </p>
+        {hasRefund ? (
+          <p>
+            ⚠ İnişte kartını iade cihazına okutmazsan iade alamazsın; bu yolculuk <strong className="text-[var(--warn)]">{amount(fare, fare.minBalance)}</strong>{' '}
+            tutar.
+          </p>
+        ) : (
+          <p>Bu yolculukta iade yok: binişte düşen tutar ücretin tamamıdır.</p>
+        )}
+      </div>
     </section>
+  )
+}
+
+function Step({ n, tone, title, text, value }: { n: number; tone: 'out' | 'in'; title: string; text: string; value: string }) {
+  return (
+    <li className="flex items-center gap-3 border-b border-[var(--line)] py-2.5 last:border-b-0">
+      <span
+        className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-sm font-bold ${tone === 'out' ? 'bg-[var(--izban)]/15 text-[var(--izban)]' : 'bg-[var(--good-soft)] text-[var(--good)]'}`}
+      >
+        {n}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold text-[var(--ink)]">{title}</span>
+        <span className="block text-xs text-[var(--muted)]">{text}</span>
+      </span>
+      <span className={`font-display text-lg font-bold tabular-nums ${tone === 'out' ? 'text-[var(--ink)]' : 'text-[var(--good)]'}`}>{value}</span>
+    </li>
   )
 }
 

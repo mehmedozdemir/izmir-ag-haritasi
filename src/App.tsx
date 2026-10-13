@@ -53,17 +53,18 @@ const MAP_LAYOUTS: { id: MapLayout; label: string; icon: string }[] = [
 ]
 
 // Kartların haritada kapladığı kenar (kart boyutu ölçeğine göre); yakınlaştırmada bu alan boş bırakılır.
-function fitPadding(layout: LegLayout, scale: number): FitPadding {
+// panelPx: haritanın üzerine binen sağ panelin (ya da daraltılmış şeridin) genişliği.
+function fitPadding(layout: LegLayout, scale: number, panelPx: number): FitPadding {
   const column = Math.round(40 + 360 * scale)
   switch (layout) {
     case 'top-left':
-      return { topLeft: [column, 110], bottomRight: [50, 50] }
+      return { topLeft: [column, 110], bottomRight: [50 + panelPx, 50] }
     case 'top-right':
-      return { topLeft: [50, 110], bottomRight: [column, 50] }
+      return { topLeft: [50, 110], bottomRight: [column + panelPx, 50] }
     case 'bottom':
-      return { topLeft: [50, 60], bottomRight: [50, Math.round(120 + 180 * scale)] }
+      return { topLeft: [50, 60], bottomRight: [50 + panelPx, Math.round(120 + 180 * scale)] }
     default:
-      return { topLeft: [50, 50], bottomRight: [50, 50] }
+      return { topLeft: [50, 50], bottomRight: [50 + panelPx, 50] }
   }
 }
 
@@ -112,6 +113,8 @@ export default function App() {
     writePref(PANEL_KEY, open ? '1' : '0')
   }
   const panelCollapsed = desktop && !panelOpen
+  // Haritanın üzerine binen panelin genişliği (mobilde panel alt alta aktığı için 0).
+  const panelPx = !desktop ? 0 : panelOpen ? 440 : 48
 
   // Geniş masaüstünde (ya da panel kapalıyken) binişler harita üzerinde yüzen kartlar olarak gösterilir.
   const wide = useMediaQuery('(min-width: 1280px)') || panelCollapsed
@@ -221,24 +224,28 @@ export default function App() {
 
   return (
     // Harita kapalıyken mobilde sayfa doğal akışta kayar (ana alan + özet alt alta); masaüstünde yan yana.
-    <div className={`flex flex-col md:h-dvh md:flex-row ${boardMode ? 'min-h-dvh' : 'h-dvh'}`}>
+    // Masaüstünde sağ panel haritanın üzerine yarı saydam biner; --panel-w ile harita üzerindeki öğeler ondan kaçınır.
+    <div
+      className={`relative flex flex-col md:h-dvh md:flex-row ${boardMode ? 'min-h-dvh' : 'h-dvh'}`}
+      style={{ '--panel-w': `${panelPx}px` } as React.CSSProperties}
+    >
       <main className={`relative min-w-0 md:min-h-0 md:flex-1 ${boardMode ? '' : 'min-h-0 flex-1'}`}>
         {tab === 'izban' ? (
           <>
-            <NetworkMap fromId={fromId} toId={toId} onStationClick={handleStationClick} />
+            <NetworkMap fromId={fromId} toId={toId} onStationClick={handleStationClick} rightInset={panelPx} />
             <Legend />
           </>
         ) : !mapOn ? (
           workspace('board')
         ) : (
           <>
-            <SimMap legs={sim.resolved} activeId={activeLegId} onSelect={onActive} fitPadding={fitPadding(legLayout, cardScale.scale)} />
+            <SimMap legs={sim.resolved} activeId={activeLegId} onSelect={onActive} fitPadding={fitPadding(legLayout, cardScale.scale, panelPx)} />
             {legLayout === 'sidebar' ? (
-              <div className="absolute top-3 right-3 z-[650]">{mapToggle}</div>
+              <div className="absolute top-3 right-[calc(var(--panel-w,0px)+0.75rem)] z-[650]">{mapToggle}</div>
             ) : (
               <>
                 {workspace(legLayout)}
-                {legLayout === 'bottom' && <div className="absolute top-3 left-1/2 z-[650] -translate-x-1/2">{mapControls}</div>}
+                {legLayout === 'bottom' && <div className="absolute top-3 left-[calc((100%-var(--panel-w,0px))/2)] z-[650] -translate-x-1/2">{mapControls}</div>}
               </>
             )}
           </>
@@ -255,8 +262,10 @@ export default function App() {
           }}
         />
       ) : (
-      <aside className={`shrink-0 overflow-y-auto ${boardMode ? '' : 'max-h-[60dvh]'} border-t border-[var(--line)] bg-[var(--bg)] md:max-h-none md:w-[440px] md:border-t-0 md:border-l`}>
-        <header className="relative z-10 md:sticky md:top-0 border-b border-[var(--line)] bg-[var(--bg)]/95 px-4 pt-4 backdrop-blur md:px-6 md:pt-5">
+      <aside
+        className={`shrink-0 overflow-y-auto ${boardMode ? '' : 'max-h-[60dvh]'} border-t border-[var(--line)] bg-[var(--bg)] md:absolute md:inset-y-0 md:right-0 md:z-[800] md:max-h-none md:w-[440px] md:border-t-0 md:border-l md:bg-[var(--bg)]/75 md:shadow-xl md:backdrop-blur-sm`}
+      >
+        <header className="relative z-10 md:sticky md:top-0 border-b border-[var(--line)] bg-[var(--bg)]/95 px-4 pt-4 backdrop-blur md:bg-transparent md:px-6 md:pt-5">
           <button
             type="button"
             onClick={() => setPanel(false)}
@@ -340,7 +349,10 @@ function PanelRail({ tab, onOpen, onTab }: { tab: Tab; onOpen: () => void; onTab
   const item = (active: boolean) =>
     `grid h-9 w-9 place-items-center rounded-lg text-sm font-bold transition ${active ? 'bg-[var(--ink)] text-[var(--bg)]' : 'text-[var(--ink)] hover:bg-[var(--track)]'}`
   return (
-    <aside className="flex w-12 shrink-0 flex-col items-center gap-2 border-l border-[var(--line)] bg-[var(--bg)] py-3" aria-label="Kapalı panel">
+    <aside
+      className="absolute inset-y-0 right-0 z-[800] flex w-12 flex-col items-center gap-2 border-l border-[var(--line)] bg-[var(--bg)]/75 py-3 shadow-lg backdrop-blur-sm"
+      aria-label="Kapalı panel"
+    >
       <button type="button" onClick={onOpen} aria-label="Paneli aç" title="Paneli aç" className={`${item(false)} text-lg text-[var(--muted)]`}>
         «
       </button>

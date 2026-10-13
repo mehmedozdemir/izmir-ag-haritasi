@@ -29,14 +29,13 @@ export function legOps(journey: Journey, onJourney: (j: Journey) => void, onActi
   }
 }
 
-/** Liste başlığındaki kısa özet: "8 biniş · 3 ücretli · 51,50 TL". */
-export function legSummary(journey: Journey, detail: SimulationResult): string {
-  const n = journey.legs.length
-  if (n === 0) return 'Henüz biniş yok'
-  const paid = detail.legs.filter((r) => r.status === 'paid' || r.status === 'transfer-partial').length
-  const total =
-    detail.total === null
-      ? '…'
-      : `${detail.total.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL`
-  return `${n} biniş · ${paid} ücretli · ${total}`
+/** Liste başlığı için özet: biniş sayısı, ücretli biniş sayısı, toplam ve aktarma tasarrufu. */
+export function legStats(journey: Journey, detail: SimulationResult) {
+  return {
+    count: journey.legs.length,
+    paid: detail.legs.filter((r) => r.status === 'paid' || r.status === 'transfer-partial').length,
+    transfers: detail.legs.filter((r) => r.status === 'transfer' || r.status === 'transfer-partial').length,
+    total: detail.total,
+    saved: detail.saved,
+  }
 }

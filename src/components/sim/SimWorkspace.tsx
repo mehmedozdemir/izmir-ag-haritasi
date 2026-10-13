@@ -90,7 +90,7 @@ export function SimWorkspace(p: Props) {
   if (board) {
     const view = p.boardView ?? 'timeline'
     return (
-      <div className="md:h-full md:overflow-y-auto">
+      <div className="md:h-full md:overflow-y-auto md:pr-[var(--panel-w,0px)]">
         <div className="mx-auto flex max-w-[1600px] flex-col gap-4 p-4 md:p-6">
           {bar}
           {p.active && (
@@ -151,7 +151,7 @@ export function SimWorkspace(p: Props) {
   // sol/sağ sütun) ya da şeridin altında soldan sağa (alt yerleşim) dizilir.
   if (p.layout === 'bottom') {
     return (
-      <section aria-label="Senaryo ve binişler" className="pointer-events-none absolute right-3 bottom-3 left-3 z-[600] flex max-h-[85%] flex-col gap-2">
+      <section aria-label="Senaryo ve binişler" className="pointer-events-none absolute right-[calc(var(--panel-w,0px)+0.75rem)] bottom-3 left-3 z-[600] flex max-h-[85%] flex-col gap-2">
         <div className="shrink-0">{bar}</div>
         {legs && (
           <div className="flex min-h-0 flex-col gap-2" style={zoomStyle}>
@@ -163,7 +163,7 @@ export function SimWorkspace(p: Props) {
   }
 
   return (
-    <section aria-label="Senaryo ve binişler" className="pointer-events-none absolute inset-3 z-[600] flex flex-col gap-2">
+    <section aria-label="Senaryo ve binişler" className="pointer-events-none absolute top-3 right-[calc(var(--panel-w,0px)+0.75rem)] bottom-3 left-3 z-[600] flex flex-col gap-2">
       <div className="shrink-0">{bar}</div>
       {legs && (
         <div className={`flex min-h-0 w-[360px] flex-col gap-2 ${p.layout === 'top-right' ? 'self-end' : ''}`} style={zoomStyle}>

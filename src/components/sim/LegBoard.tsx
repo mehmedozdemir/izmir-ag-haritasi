@@ -1,11 +1,11 @@
 import type { LegResult, SimulationResult } from '../../fare/engine'
 import type { RouteInfo } from '../../transit/data'
 import { fmtMin, type Journey } from '../../sim/journey'
-import { legOps, legSummary } from '../../sim/legOps'
+import { legOps } from '../../sim/legOps'
 import type { ResolvedLeg } from '../../sim/useSimulation'
 import { FareBadge, LegCard, tl } from './LegCard'
 import { LineBadge } from './LinePicker'
-import { CardTag } from './CardTag'
+import { LegTotalsHeader } from './LegTotalsHeader'
 
 type Props = {
   journey: Journey
@@ -80,12 +80,10 @@ export function LegBoard({ journey, onJourney, routes, resolved, detail, activeL
 
   return (
     <section aria-label="Binişler" className="overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--surface)]">
-      <header className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-[var(--line)] px-4 py-2.5">
-        <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">Binişler</h2>
-      <CardTag card={journey.detailCard} suffix=" kart" className="text-xs" />
-        <span className="text-xs font-semibold tabular-nums text-[var(--ink)]">{legSummary(journey, detail)}</span>
+      <header className="border-b border-[var(--line)] px-4 py-2.5">
+        <LegTotalsHeader journey={journey} detail={detail} onClear={ops.clear} />
         {scale && (
-          <span className="flex items-center gap-3 text-[11px] text-[var(--muted)]">
+          <span className="mt-2 flex items-center gap-3 text-[11px] text-[var(--muted)]">
             <span className="flex items-center gap-1">
               <span className="h-2.5 w-4 rounded-sm bg-[var(--good-soft)] ring-1 ring-[var(--good)]/40" /> 90 dk aktarma
             </span>
@@ -95,11 +93,6 @@ export function LegBoard({ journey, onJourney, routes, resolved, detail, activeL
               </span>
             )}
           </span>
-        )}
-        {journey.legs.length > 0 && (
-          <button type="button" onClick={ops.clear} className="ml-auto text-xs font-semibold text-[var(--muted)] hover:text-[var(--warn)]">
-            Temizle
-          </button>
         )}
       </header>
 

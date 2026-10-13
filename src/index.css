@@ -137,6 +137,11 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Sağ panel haritanın üzerine bindiği için atıf (attribution) yazısı panelin soluna kayar. */
+.leaflet-bottom.leaflet-right {
+  right: var(--panel-w, 0px);
+}
+
 /* Tıklanan hat/durak çizgisine tarayıcının çizdiği odak dikdörtgeni olmasın; seçim kalın kenarla gösterilir. */
 .leaflet-container path.leaflet-interactive:focus,
 .leaflet-container .leaflet-marker-icon:focus {
