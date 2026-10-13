@@ -137,6 +137,12 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Tıklanan hat/durak çizgisine tarayıcının çizdiği odak dikdörtgeni olmasın; seçim kalın kenarla gösterilir. */
+.leaflet-container path.leaflet-interactive:focus,
+.leaflet-container .leaflet-marker-icon:focus {
+  outline: none;
+}
+
 /* Hat renkleri öne çıksın diye altlık haritayı hafif soluklaştır; karanlık temada ters çevir. */
 .basemap {
   filter: saturate(0.55) brightness(1.03);

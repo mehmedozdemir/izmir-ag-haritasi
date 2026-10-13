@@ -57,7 +57,14 @@ export function SimMap({ legs, activeId, onSelect, fitPadding }: Props) {
           <Polyline
             key={`${leg.draft.id}-casing`}
             positions={path}
-            pathOptions={{ color: '#ffffff', weight: 10, opacity: 0.9 * dim(leg.draft.id) }}
+            // Seçili binişte beyaz kenar belirgin şekilde kalınlaşır (seçim göstergesi).
+            pathOptions={{
+              color: '#ffffff',
+              weight: leg.draft.id === activeId ? 18 : 10,
+              opacity: leg.draft.id === activeId ? 1 : 0.9 * dim(leg.draft.id),
+              lineCap: 'round',
+              lineJoin: 'round',
+            }}
             interactive={false}
           />
         ))}
